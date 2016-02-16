@@ -27,7 +27,7 @@ Documentation/memory-barriers.txt
 
 목차:
 
- (*) Abstract memory access model.
+ (*) 추상 메모리 액세스 모델.
 
      - Device operations.
      - Guarantees.
@@ -89,11 +89,11 @@ Documentation/memory-barriers.txt
  (*) References.
 
 
-============================
-ABSTRACT MEMORY ACCESS MODEL
-============================
+=======================
+추상 메모리 액세스 모델
+=======================
 
-Consider the following abstract model of the system:
+다음과 같은 추상화된 시스템 모델을 생각해 봅시다:
 
 		            :                :
 		            :                :
@@ -118,19 +118,19 @@ Consider the following abstract model of the system:
 		            :   +--------+   :
 		            :                :
 
-Each CPU executes a program that generates memory access operations.  In the
-abstract CPU, memory operation ordering is very relaxed, and a CPU may actually
-perform the memory operations in any order it likes, provided program causality
-appears to be maintained.  Similarly, the compiler may also arrange the
-instructions it emits in any order it likes, provided it doesn't affect the
-apparent operation of the program.
+각 CPU 는 메모리 액세스 오퍼레이션들을 생성해내는 프로그램을 실행합니다.
+추상화된 CPU 에서, 메모리 오퍼레이션 순서는 매우 완화되어 있고, CPU 는
+프로그램이 인과관계를 어기진 않고 관리된다고 보일 수만 있다면 메모리
+오퍼레이션들을 자신이 원하는 어떤 순서대로든 재배치해 실행할 것입니다.
+유사하게, 컴파일러 또한 프로그램의 정상적 동작을 망가뜨리지 않는 한도 내에서는
+자신이 원하는대로 어떤 순서로든 명령어들을 재배치 할 것입니다.
 
-So in the above diagram, the effects of the memory operations performed by a
-CPU are perceived by the rest of the system as the operations cross the
-interface between the CPU and rest of the system (the dotted lines).
+따라서 위의 다어그램에서, 한 CPU가 수행하는 메모리 오퍼레이션의 효과는
+오퍼레이션이 CPU 와 시스템의 다른 부분들 사이의 인터페이스(점선) 를 지나갈 때
+시스템의 나머지 부분들에 전파됩니다.
 
 
-For example, consider the following sequence of events:
+예를 들어, 다음의 일련의 이벤트들을 생각해봅시다:
 
 	CPU 1		CPU 2
 	===============	===============
@@ -138,8 +138,8 @@ For example, consider the following sequence of events:
 	A = 3;		x = B;
 	B = 4;		y = A;
 
-The set of accesses as seen by the memory system in the middle can be arranged
-in 24 different combinations:
+메모리 시스템에 보여지게 될 중간의 액세스들은 다음의 총 24개 서로 다른 조합으로
+재구성될 수 있습니다:
 
 	STORE A=3,	STORE B=4,	y=LOAD A->3,	x=LOAD B->4
 	STORE A=3,	STORE B=4,	x=LOAD B->4,	y=LOAD A->3
@@ -151,7 +151,7 @@ in 24 different combinations:
 	STORE B=4, ...
 	...
 
-and can thus result in four different combinations of values:
+따라서 다음의 네가지 서로 다른 결과값의 조합이 보일 수 있습니다:
 
 	x == 2, y == 1
 	x == 2, y == 3
@@ -159,12 +159,11 @@ and can thus result in four different combinations of values:
 	x == 4, y == 3
 
 
-Furthermore, the stores committed by a CPU to the memory system may not be
-perceived by the loads made by another CPU in the same order as the stores were
-committed.
+더욱이, 한 CPU 에 의해 메모리 시스템에 행해진 저장 동작들은 다른 CPU 의 읽기
+동작들에 저장이 행해진 순서와 다른 순서로 읽혀질 수 있습니다.
 
 
-As a further example, consider this sequence of events:
+예로, 이 일련의 이벤트들을 생각해 봅시다:
 
 	CPU 1		CPU 2
 	===============	===============
@@ -172,16 +171,16 @@ As a further example, consider this sequence of events:
 	B = 4;		Q = P;
 	P = &B		D = *Q;
 
-There is an obvious data dependency here, as the value loaded into D depends on
-the address retrieved from P by CPU 2.  At the end of the sequence, any of the
-following results are possible:
+여기엔 분명한 데이터 의존성이 존재합니다. D 로 읽혀지는 값은 CPU 2 에서 P
+로부터 읽혀진 주소값에 의존적입니다. 이벤트들이 완료되었을 때, 아래의 결과들이
+가능합니다:
 
 	(Q == &A) and (D == 1)
 	(Q == &B) and (D == 2)
 	(Q == &B) and (D == 4)
 
-Note that CPU 2 will never try and load C into D because the CPU will load P
-into Q before issuing the load of *Q.
+CPU 2 는 *Q 의 로드를 요청하기 전에 P 를 Q 에 넣기 때문에 D 에 C 를 집어넣는
+일은 없음을 알아 두세요.
 
 
 DEVICE OPERATIONS
