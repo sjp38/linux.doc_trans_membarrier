@@ -149,7 +149,7 @@ As a further example, consider this sequence of events:
 
 	CPU 1		CPU 2
 	===============	===============
-	{ A == 1, B == 2, C = 3, P == &A, Q == &C }
+	{ A == 1, B == 2, C == 3, P == &A, Q == &C }
 	B = 4;		Q = P;
 	P = &B		D = *Q;
 
@@ -233,7 +233,7 @@ And there are a number of things that _must_ or _must_not_ be assumed:
      with memory references that are not protected by READ_ONCE() and
      WRITE_ONCE().  Without them, the compiler is within its rights to
      do all sorts of "creative" transformations, which are covered in
-     the Compiler Barrier section.
+     the "Compiler Barrier" section.
 
  (*) It _must_not_ be assumed that independent loads and stores will be issued
      in the order given.  This means that for:
@@ -518,7 +518,7 @@ following sequence of events:
 
 	CPU 1		      CPU 2
 	===============	      ===============
-	{ A == 1, B == 2, C = 3, P == &A, Q == &C }
+	{ A == 1, B == 2, C == 3, P == &A, Q == &C }
 	B = 4;
 	<write barrier>
 	WRITE_ONCE(P, &B)
@@ -545,7 +545,7 @@ between the address load and the data load:
 
 	CPU 1		      CPU 2
 	===============	      ===============
-	{ A == 1, B == 2, C = 3, P == &A, Q == &C }
+	{ A == 1, B == 2, C == 3, P == &A, Q == &C }
 	B = 4;
 	<write barrier>
 	WRITE_ONCE(P, &B);
@@ -572,7 +572,7 @@ access:
 
 	CPU 1		      CPU 2
 	===============	      ===============
-	{ M[0] == 1, M[1] == 2, M[3] = 3, P == 0, Q == 3 }
+	{ M[0] == 1, M[1] == 2, M[3] == 3, P == 0, Q == 3 }
 	M[1] = 4;
 	<write barrier>
 	WRITE_ONCE(P, 1);
@@ -815,7 +815,7 @@ In summary:
   (*) Control dependencies require that the compiler avoid reordering the
       dependency into nonexistence.  Careful use of READ_ONCE() or
       atomic{,64}_read() can help to preserve your control dependency.
-      Please see the Compiler Barrier section for more information.
+      Please see the "Compiler Barrier" section for more information.
 
   (*) Control dependencies pair normally with other types of barriers.
 
@@ -2951,7 +2951,7 @@ The Alpha defines the Linux kernel's memory barrier model.
 See the subsection on "Cache Coherency" above.
 
 VIRTUAL MACHINE GUESTS
--------------------
+----------------------
 
 Guests running within virtual machines might be affected by SMP effects even if
 the guest itself is compiled without SMP support.  This is an artifact of
