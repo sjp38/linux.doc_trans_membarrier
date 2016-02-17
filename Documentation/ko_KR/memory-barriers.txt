@@ -32,7 +32,7 @@ Documentation/memory-barriers.txt
      - 디바이스 오퍼레이션.
      - 보장사항들.
 
- (*) What are memory barriers?
+ (*) 메모리 배리어들이란 무엇인가?
 
      - Varieties of memory barrier.
      - What may not be assumed about memory barriers?
@@ -327,24 +327,22 @@ CPU 에게 기대할 수 있는 최소한의 보장사항들이 일부 있습니
 		sizes of those intervening bit-fields happen to be.
 
 
-=========================
-WHAT ARE MEMORY BARRIERS?
-=========================
+=============================
+메모리 배리어들이란 무엇인가?
+=============================
 
-As can be seen above, independent memory operations are effectively performed
-in random order, but this can be a problem for CPU-CPU interaction and for I/O.
-What is required is some way of intervening to instruct the compiler and the
-CPU to restrict the order.
+앞에서 봤듯이, 개별적 메모리 오퍼레이션들은 실제로는 무작위적 순서로 수행될 수
+있습니다만, 이것은 CPU 와 CPU 간 상호작용과 I/O 에 문제가 될 수 있습니다.
+따라서 컴파일러와 CPU 가 바꾸는 순서에 개입할 수 있는 어떤 방법이 필요합니다.
 
-Memory barriers are such interventions.  They impose a perceived partial
-ordering over the memory operations on either side of the barrier.
+메모리 배리어들이 그런 개입방법입니다.  메모리 배리어들은 배리어를 사이에 둔
+양측의 메모리 오퍼레이션들 간에 부분적 순서가 존재하는 효과를 줍니다.
 
-Such enforcement is important because the CPUs and other devices in a system
-can use a variety of tricks to improve performance, including reordering,
-deferral and combination of memory operations; speculative loads; speculative
-branch prediction and various types of caching.  Memory barriers are used to
-override or suppress these tricks, allowing the code to sanely control the
-interaction of multiple CPUs and/or devices.
+시스템의 CPU 들과 다른 디바이스들이 성능을 올리기 위해 재배치, 유예 그리고
+메모리 오퍼레이션들의 조합; 투기적 로드; 투기적 브랜치 예측 그리고 다양한 캐싱
+등의 다양한 트릭을 사용할 수 있기 때문에 이런 강제력은 중요합니다.  메모리
+배리어들은 이런 트릭들을 무효로 하거나 억제하기 위해 사용되어져서 코드가 여러
+CPU 와/또는 디바이스들 간의 상호작용을 제정신으로 다룰 수 있게 해줍니다.
 
 
 VARIETIES OF MEMORY BARRIER
