@@ -30,7 +30,7 @@ Documentation/memory-barriers.txt
  (*) 추상 메모리 액세스 모델.
 
      - 디바이스 오퍼레이션.
-     - Guarantees.
+     - 보장사항들.
 
  (*) What are memory barriers?
 
@@ -204,60 +204,57 @@ CPU 2 는 *Q 의 로드를 요청하기 전에 P 를 Q 에 넣기 때문에 D �
 것입니다.
 
 
-GUARANTEES
+보장사항들
 ----------
 
-There are some minimal guarantees that may be expected of a CPU:
+CPU 에게 기대할 수 있는 최소한의 보장사항들이 일부 있습니다:
 
- (*) On any given CPU, dependent memory accesses will be issued in order, with
-     respect to itself.  This means that for:
+ (*) 어떤 CPU 든, 의존성이 존재하는 메모리 액세스들은 해당 CPU 자신에게
+     있어서는 해당 순서 그대로 요청됩니다. 즉, 다음에 대해서는:
 
 	Q = READ_ONCE(P); smp_read_barrier_depends(); D = READ_ONCE(*Q);
 
-     the CPU will issue the following memory operations:
+     CPU 는 다음과 같은 메모리 오퍼레이션들을 요청합니다:
 
 	Q = LOAD P, D = LOAD *Q
 
-     and always in that order.  On most systems, smp_read_barrier_depends()
-     does nothing, but it is required for DEC Alpha.  The READ_ONCE()
-     is required to prevent compiler mischief.  Please note that you
-     should normally use something like rcu_dereference() instead of
-     open-coding smp_read_barrier_depends().
+     그리고 그 순서는 항상 지켜집니다.  대부분의 시스템에서,
+     smp_read_barrier_depends() 는 아무일도 안합니다만, DEC Alpha 에서는
+     필요합니다.  보통의 경우 당신은 smp_read_barrier_depends() 를 직접
+     사용하는 대신 rcu_dereference() 같은 것들을 사용해야 할 겁니다.
 
- (*) Overlapping loads and stores within a particular CPU will appear to be
-     ordered within that CPU.  This means that for:
+ (*) 특정 CPU 내에서 겹쳐서 행해지는 로드와 스토어 들은 그 CPU 안에서는 순서가
+     맞춰진 것으로 나타납니다.  즉, 다음에 대해서:
 
 	a = READ_ONCE(*X); WRITE_ONCE(*X, b);
 
-     the CPU will only issue the following sequence of memory operations:
+     CPU 는 다음의 메모리 오퍼레이션 배열만을 메모리에 요청할 것입니다:
 
 	a = LOAD *X, STORE *X = b
 
-     And for:
+     그리고 다음에 대해서는:
 
 	WRITE_ONCE(*X, c); d = READ_ONCE(*X);
 
-     the CPU will only issue:
+     CPU 는 오로지 다음의 명령만을 냅니다:
 
 	STORE *X = c, d = LOAD *X
 
-     (Loads and stores overlap if they are targeted at overlapping pieces of
-     memory).
+     (로드와 스토어는 같은 메모리 영역을 타겟으로 할 때에 겹쳐집니다).
 
-And there are a number of things that _must_ or _must_not_ be assumed:
+그리고 _반드시_ 또는 _절대로_ 가정하거나 하지 말아야 하는 것들이 있습니다:
 
- (*) It _must_not_ be assumed that the compiler will do what you want
-     with memory references that are not protected by READ_ONCE() and
-     WRITE_ONCE().  Without them, the compiler is within its rights to
-     do all sorts of "creative" transformations, which are covered in
-     the Compiler Barrier section.
+ (*) 컴파일러가 READ_ONCE() 나 WRITE_ONCE() 로 보호되지 않은 메모리 참조에 대해
+     당신이 원하는 대로 할 것이라는 가정은 _절대로_ 해선 안됩니다.  그것들이
+     없다면, 컴파일러는 컴파일러 배리어 섹션에서 다루게 될, 모든 "창조적인"
+     변경들을 만들 권한을 가지게 됩니다.
 
- (*) It _must_not_ be assumed that independent loads and stores will be issued
-     in the order given.  This means that for:
+ (*) 개별적인 로드와 스토어들이 주어진 순서대로 요청될 것이라는 가정은 _절대로_
+     하지 말아야 합니다.  이 말은 즉:
 
 	X = *A; Y = *B; *D = Z;
 
-     we may get any of the following sequences:
+     는 다음의 순서들 중 어느 것이든 만들어질 수 있다는 의미입니다:
 
 	X = LOAD *A,  Y = LOAD *B,  STORE *D = Z
 	X = LOAD *A,  STORE *D = Z, Y = LOAD *B
@@ -266,51 +263,49 @@ And there are a number of things that _must_ or _must_not_ be assumed:
 	STORE *D = Z, X = LOAD *A,  Y = LOAD *B
 	STORE *D = Z, Y = LOAD *B,  X = LOAD *A
 
- (*) It _must_ be assumed that overlapping memory accesses may be merged or
-     discarded.  This means that for:
+ (*) 겹치는 메모리 액세스들은 병합되거나 버려질 수 있음을 _반드시_ 가정해야
+     합니다.  다음의 코드는:
 
 	X = *A; Y = *(A + 4);
 
-     we may get any one of the following sequences:
+     다음의 인스트럭션 흐름 중 뭐든 될 수 있습니다:
 
 	X = LOAD *A; Y = LOAD *(A + 4);
 	Y = LOAD *(A + 4); X = LOAD *A;
 	{X, Y} = LOAD {*A, *(A + 4) };
 
-     And for:
+     그리고:
 
 	*A = X; *(A + 4) = Y;
 
-     we may get any of:
+     는 다음 중 뭐든 가능합니다:
 
 	STORE *A = X; STORE *(A + 4) = Y;
 	STORE *(A + 4) = Y; STORE *A = X;
 	STORE {*A, *(A + 4) } = {X, Y};
 
-And there are anti-guarantees:
+그리고 안티-보장사항들이 있습니다:
 
- (*) These guarantees do not apply to bitfields, because compilers often
-     generate code to modify these using non-atomic read-modify-write
-     sequences.  Do not attempt to use bitfields to synchronize parallel
-     algorithms.
+ (*) 이 보장사항들은 bitfields 에는 적용되지 않는데, 컴파일러들은 이것들을
+     원자성 없는 read-modify-write 배열로 바꾸는 코드를 생성하기 때문입니다.
+     병렬 알고리즘의 동기화에 bitfields 를 사용하려 하지 마십시오.
 
- (*) Even in cases where bitfields are protected by locks, all fields
-     in a given bitfield must be protected by one lock.  If two fields
-     in a given bitfield are protected by different locks, the compiler's
-     non-atomic read-modify-write sequences can cause an update to one
-     field to corrupt the value of an adjacent field.
+ (*) bitfields 가 여러 락으로 보호되는 경우라 하더라도, 주어진 bitfield 의 모든
+     필드들은 하나의 락으로 보호되어야 합니다.  만약 한 bitfield 의 두 필드가
+     서로 다른 락으로 보호된다면, 컴파일러의 원자성 없는 read-modify-write
+     배열들은 한 필드에의 업데이트가 근처의 필드에도 영향을 끼칠 수 있습니다.
 
- (*) These guarantees apply only to properly aligned and sized scalar
-     variables.  "Properly sized" currently means variables that are
-     the same size as "char", "short", "int" and "long".  "Properly
-     aligned" means the natural alignment, thus no constraints for
-     "char", two-byte alignment for "short", four-byte alignment for
-     "int", and either four-byte or eight-byte alignment for "long",
-     on 32-bit and 64-bit systems, respectively.  Note that these
-     guarantees were introduced into the C11 standard, so beware when
-     using older pre-C11 compilers (for example, gcc 4.6).  The portion
-     of the standard containing this guarantee is Section 3.14, which
-     defines "memory location" as follows:
+ (*) 이 보장사항들은 적절하게 정렬되고 크기가 잡힌 스칼라 변수들에 대해서만
+     적용됩니다.  "적절하게 크기가 잡힌" 이라함은 현재로써는 "char", "short",
+     "int" 그리고 "long" 과 같은 크기의 변수들을 의미합니다.  "적절하게 정렬된"
+     은 자연적인 정렬을 의미하는데, 따라서 "char" 에 대해서는 아무 제약이 없고,
+     "short" 에 대해서는 2바이트 정렬을, "int" 에는 4바이트 정렬을, 그리고
+     "long" 에 대해서는 32-bit 시스템인지 64-bit 시스템인지에 따라 4바이트 또는
+     8바이트 정렬을 의미합니다.  이 보장사항들은 C11 표준에서 소개되었으므로,
+     C11 이전의 오래된 컴파일러(예를 들어, gcc 4.6) 를 사용할 때엔 주의하시기
+     바랍니다.  표준에 이 보장사항들은 "memory location" 을 정의하는 3.14
+     섹션에 다음과 같이 설명되어 있습니다:
+     (역자: 인용문이므로 번역하지 않습니다)
 
      	memory location
 		either an object of scalar type, or a maximal sequence
