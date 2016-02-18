@@ -350,58 +350,58 @@ CPU 와/또는 디바이스들 간의 상호작용을 제정신으로 다룰 수
 
 메모리 배리어들은 네개의 기본 종류로 분류됩니다:
 
- (1) Write (or store) memory barriers.
+ (1) 쓰기 (또는 스토어) 메모리 배리어들.
 
-     A write memory barrier gives a guarantee that all the STORE operations
-     specified before the barrier will appear to happen before all the STORE
-     operations specified after the barrier with respect to the other
-     components of the system.
+     쓰기 메모리 배리어는 시스템의 다른 컴포넌트들에 해당 배리어 앞에 기술된
+     모든 STORE 오퍼레이션들이 해당 배리어 뒤에 기술된 모든 STORE
+     오퍼레이션들보다 먼저 수행된 것과 같이 보일 것을 보장합니다.
 
-     A write barrier is a partial ordering on stores only; it is not required
-     to have any effect on loads.
+     쓰기 배리어는 스토어 오퍼레이션들만에 대한 부분적 순서 세우기입니다; 로드
+     오퍼레이션들에 대해서는 어떤 영향도 끼치지 않습니다.
 
-     A CPU can be viewed as committing a sequence of store operations to the
-     memory system as time progresses.  All stores before a write barrier will
-     occur in the sequence _before_ all the stores after the write barrier.
+     CPU 는 시간의 흐름에 따라 메모리 시스템에 일련의 스토어 오퍼레이션들을
+     하나씩 집어넣습니다.  모든 쓰기 배리어 이전의 스토어 오퍼레이션들은 그
+     쓰기 배리어 뒤의 모든 스토어 오퍼레이션들보다 _전에_ 그 순서대로 행해질
+     것입니다.
 
-     [!] Note that write barriers should normally be paired with read or data
-     dependency barriers; see the "SMP barrier pairing" subsection.
+     [!] 쓰기 배리어들은 읽기 또는 데이터 의존성 배리어와 함께 짝지어져야만
+     함을 알아두세요; "SMP 배리어 짝짓기" 서브섹션을 참고하십시오.
 
 
- (2) Data dependency barriers.
+ (2) 데이터 의존성 배리어.
 
-     A data dependency barrier is a weaker form of read barrier.  In the case
-     where two loads are performed such that the second depends on the result
-     of the first (eg: the first load retrieves the address to which the second
-     load will be directed), a data dependency barrier would be required to
-     make sure that the target of the second load is updated before the address
-     obtained by the first load is accessed.
+     데이터 의존성 배리어는 읽기 배리어의 보다 약한 형태입니다.  두개의 로드
+     오퍼레이션이 있고 두번째 것이 첫번째 것의 결과에 의존하고 있을 때(예:
+     첫번째 로드는 두번째 로드가 참조할 주소를 읽는 경우), 두번째 로드가 읽어올
+     데이터는 첫번째 로드에 의해 그 주소가 얻어지기 전에 업데이트 되어 있음을
+     분명히 하기 위해 데이터 의존성 배리어가 필요할 수 있습니다.
 
-     A data dependency barrier is a partial ordering on interdependent loads
-     only; it is not required to have any effect on stores, independent loads
-     or overlapping loads.
+     데이터 의존성 배리어는 상호 의존적인 로드 오퍼레이션들 사이의 부분적 순서
+     세우기입니다; 스토어 오퍼레이션들이나 독립적인 로드들, 또는 중복되는
+     로드들에 대해서는 어떤 영향도 끼치지 않습니다.
 
-     As mentioned in (1), the other CPUs in the system can be viewed as
-     committing sequences of stores to the memory system that the CPU being
-     considered can then perceive.  A data dependency barrier issued by the CPU
-     under consideration guarantees that for any load preceding it, if that
-     load touches one of a sequence of stores from another CPU, then by the
-     time the barrier completes, the effects of all the stores prior to that
-     touched by the load will be perceptible to any loads issued after the data
-     dependency barrier.
+     (1) 에서 언급했듯, 시스템의 다른 CPU 들은 해당 CPU 가 어떤 변수의 값을
+     원하면 인식할 수 있는 메모리 시스템에 일련의 스토어 오퍼레이션들을
+     집어넣고 있는 것으로 볼 수 있습니다.
+     특정 변수에 관심을 두고 있는 CPU 가 요청하는 데이터 의존성 배리어는 그
+     앞의 어떤 로드 오퍼레이션도 그 로드가 다른 CPU가 요청한 스토어
+     오퍼레이션들과 겹치는 영역을 향한다면, 배리어가 완료되는 시점에서는 그
+     전에 로드와 겹쳤던 모든 스토어 오퍼레이션들이 완료되어 있음을 보장해
+     데이터 의존성 배리어 이후의 로드 오퍼레이션들은 그 스토어 오퍼레이션의
+     결과를 볼 수 있게 보장합니다.
 
-     See the "Examples of memory barrier sequences" subsection for diagrams
-     showing the ordering constraints.
+     이 순서 세우기 제약에 대한 다이어그램을 위해선 "메모리 배리어 배열의 예"
+     서브섹션을 참고하시기 바랍니다.
 
-     [!] Note that the first load really has to have a _data_ dependency and
-     not a control dependency.  If the address for the second load is dependent
-     on the first load, but the dependency is through a conditional rather than
-     actually loading the address itself, then it's a _control_ dependency and
-     a full read barrier or better is required.  See the "Control dependencies"
-     subsection for more information.
+     [!] 첫번째 로드는 반드시 _데이터_ 의존성을 가져야지 컨트롤 의존성을 가져야
+     하는게 아님을 알아두십시오.  만약 두번째 로드를 위한 주소가 첫번째 로드에
+     의존적이지만 그 의존성은 조건적이지 그 주소 자체를 가져오는게 아니라면,
+     그것은 _컨트롤_ 의존성이고 완전한 리드 배리어나 그보다 강한 무엇이
+     필요합니다. 더 자세한 내용을 위해서는 "컨트롤 의존성" 서브섹션을
+     참고하시기 바랍니다.
 
-     [!] Note that data dependency barriers should normally be paired with
-     write barriers; see the "SMP barrier pairing" subsection.
+     [!] 데이터 의존성 배리어는 보통 쓰기 배리어들과 함께 짝지어져야 합니다;
+     "SMP 배리어 짝짓기" 서브섹션을 참고하세요.
 
 
  (3) Read (or load) memory barriers.
