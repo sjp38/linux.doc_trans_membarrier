@@ -592,12 +592,12 @@ include/linux/rcupdate.h 의 rcu_assign_pointer() 와 rcu_dereference() 를
 더 많은 예를 위해선 "캐시 일관성" 서브섹션을 참고하세요.
 
 
-CONTROL DEPENDENCIES
---------------------
+컨트롤 의존성
+-------------
 
-A load-load control dependency requires a full read memory barrier, not
-simply a data dependency barrier to make it work correctly.  Consider the
-following bit of code:
+로드-로드 컨트롤 의존성은 제대로 동작하기 위해 단순히 데이터 의존성 배리어를
+치는 것만으로는 안되고, 전체 읽기 메모리 배리어를 필요로 합니다.  아래의 코드를
+봅시다:
 
 	q = READ_ONCE(a);
 	if (q) {
@@ -605,11 +605,11 @@ following bit of code:
 		p = READ_ONCE(b);
 	}
 
-This will not have the desired effect because there is no actual data
-dependency, but rather a control dependency that the CPU may short-circuit
-by attempting to predict the outcome in advance, so that other CPUs see
-the load from b as having happened before the load from a.  In such a
-case what's actually required is:
+실제 데이터 의존성이 아니라 CPU 가 분기 조건의 결과를 예상해서 실행 속도를 더
+빠르게 만들 수도 있는 컨트롤 의존성이 존재하기 때문에, 이 코드는 원하던 대로
+동작하지 않고, 다른 CPU 가 b 로부터의 로드 오퍼레이션이 a 의 로드
+오퍼레이션보다 먼저 발생한 걸로 볼 수도 있게 합니다.  여기에 정말로 필요했던
+건:
 
 	q = READ_ONCE(a);
 	if (q) {
@@ -617,32 +617,30 @@ case what's actually required is:
 		p = READ_ONCE(b);
 	}
 
-However, stores are not speculated.  This means that ordering -is- provided
-for load-store control dependencies, as in the following example:
+하지만, 스토어 오퍼레이션은 추측되지 않습니다.  즉, 다음 예에서와 같이
+로드-스토어 컨트롤 의존성이 존재하는 경우에는 순서가 제공-된다-는 의미입니다.
 
 	q = READ_ONCE(a);
 	if (q) {
 		WRITE_ONCE(b, p);
 	}
 
-Control dependencies pair normally with other types of barriers.  That
-said, please note that READ_ONCE() is not optional! Without the
-READ_ONCE(), the compiler might combine the load from 'a' with other
-loads from 'a', and the store to 'b' with other stores to 'b', with
-possible highly counterintuitive effects on ordering.
+컨트롤 의존성들은 보통 다른 타입의 배리어들과 엮입니다.  그렇다곤 하나,
+READ_ONCE() 는 선택 가능한게 아님을 반드시 기억해 두세요! READ_ONCE() 없이는,
+컴파일러가 매우 비직관적인 결과를 초래하는 순서로 'a' 로부터의 로드를 다른 'a'
+로부터의 로드와, 'b' 로의 스토어를 다른 'b' 로의 스토어와 조합해 버릴 수
+있습니다.
 
-Worse yet, if the compiler is able to prove (say) that the value of
-variable 'a' is always non-zero, it would be well within its rights
-to optimize the original example by eliminating the "if" statement
-as follows:
+이걸로 끝이 아닌게, 컴파일러가 변수 'a' 의 값이 항상 0이 아니라고 증명할 수
+있다면, 앞의 예에서 "if" 문을 없애서 다음과 같이 최적화 할 수도 있습니다:
 
 	q = a;
 	b = p;  /* BUG: Compiler and CPU can both reorder!!! */
 
-So don't leave out the READ_ONCE().
+그러니 READ_ONCE() 를 반드시 사용하세요.
 
-It is tempting to try to enforce ordering on identical stores on both
-branches of the "if" statement as follows:
+다음과 같이 "if" 문의 각 브랜치에 동일한 스토어에 대해 순서를 강제하고 싶은
+경우가 있을 수 있습니다:
 
 	q = READ_ONCE(a);
 	if (q) {
@@ -655,8 +653,8 @@ branches of the "if" statement as follows:
 		do_something_else();
 	}
 
-Unfortunately, current compilers will transform this as follows at high
-optimization levels:
+안타깝지만, 현재의 컴파일러들은 높은 최적화 레벨에서는 이걸 다음과 같이
+바꿔버립니다:
 
 	q = READ_ONCE(a);
 	barrier();
@@ -669,12 +667,11 @@ optimization levels:
 		do_something_else();
 	}
 
-Now there is no conditional between the load from 'a' and the store to
-'b', which means that the CPU is within its rights to reorder them:
-The conditional is absolutely required, and must be present in the
-assembly code even after all compiler optimizations have been applied.
-Therefore, if you need ordering in this example, you need explicit
-memory barriers, for example, smp_store_release():
+이제 'a' 에서의 로드와 'b' 로의 스토어 사이에는 조건적 관계가 없기 때문에 CPU
+는 이들의 순서를 바꿀 수 있게 됩니다: 조건적 관계는 반드시 필요합니다, 그리고
+모든 컴파일러 최적화가 이루어지고 난 후의 어셈블리 코드에서도 존재해야 합니다.
+따라서, 이 예에서 순서를 지키기 위해서는 smp_store_release() 와 같은 명시적
+메모리 배리어가 필요합니다:
 
 	q = READ_ONCE(a);
 	if (q) {
@@ -685,8 +682,8 @@ memory barriers, for example, smp_store_release():
 		do_something_else();
 	}
 
-In contrast, without explicit memory barriers, two-legged-if control
-ordering is guaranteed only when the stores differ, for example:
+반대로, 명시적 메모리 배리어가 없다면, 이런 경우의 순서는 스토어 오퍼레이션들이
+서로 다를 때에만, 예를 들어 다음과 같은 경우에 보장됩니다:
 
 	q = READ_ONCE(a);
 	if (q) {
@@ -697,12 +694,12 @@ ordering is guaranteed only when the stores differ, for example:
 		do_something_else();
 	}
 
-The initial READ_ONCE() is still required to prevent the compiler from
-proving the value of 'a'.
+처음의 READ_ONCE() 는 컴파일러가 'a' 의 값을 증명해내는 것을 막기 위해 여전히
+필요합니다.
 
-In addition, you need to be careful what you do with the local variable 'q',
-otherwise the compiler might be able to guess the value and again remove
-the needed conditional.  For example:
+또한, 로컬 변수 'q' 를 가지고 하는 것에 대해 조심해야 합니다, 그러지 않으면
+컴파일러는 그 값을 추측하고 또다시 필요한 조건관계를 없애버릴 수 있습니다.
+예를 들면:
 
 	q = READ_ONCE(a);
 	if (q % MAX) {
@@ -713,20 +710,18 @@ the needed conditional.  For example:
 		do_something_else();
 	}
 
-If MAX is defined to be 1, then the compiler knows that (q % MAX) is
-equal to zero, in which case the compiler is within its rights to
-transform the above code into the following:
+만약 MAX 가 1 로 정의된 상수라면, 컴파일러는 (q % MAX) 는 0이란 것을 알아채고,
+위의 코드를 아래와 같이 바꿔버릴 수 있습니다:
 
 	q = READ_ONCE(a);
 	WRITE_ONCE(b, p);
 	do_something_else();
 
-Given this transformation, the CPU is not required to respect the ordering
-between the load from variable 'a' and the store to variable 'b'.  It is
-tempting to add a barrier(), but this does not help.  The conditional
-is gone, and the barrier won't bring it back.  Therefore, if you are
-relying on this ordering, you should make sure that MAX is greater than
-one, perhaps as follows:
+이렇게 되면, CPU 는 변수 'a' 로부터의 로드와 변수 'b' 로의 스토어 사이의 순서를
+지켜줄 필요가 없어집니다.  barrier() 를 추가하고 싶겠지만, 그건 도움이
+안됩니다.  조건 관계는 사라졌고, 배리어는 그걸 되돌리지 못합니다.  따라서, 이
+순서를 지켜야 한다면, MAX 가 1 보다 크다는 것을, 대략 다음과 같이 분명히 해야
+합니다:
 
 	q = READ_ONCE(a);
 	BUILD_BUG_ON(MAX <= 1); /* Order load from a with store to b. */
@@ -738,32 +733,30 @@ one, perhaps as follows:
 		do_something_else();
 	}
 
-Please note once again that the stores to 'b' differ.  If they were
-identical, as noted earlier, the compiler could pull this store outside
-of the 'if' statement.
+'b' 로의 스토어들은 여전히 서로 다름을 알아두세요.  만약 그것들이 동일하면,
+앞에서 이야기했듯, 컴파일러는 그 스토어 오퍼레이션들을 'if' 문 바깥으로
+끄집어낼 수 있습니다.
 
-You must also be careful not to rely too much on boolean short-circuit
-evaluation.  Consider this example:
+또한 이진 조건문 평가에 너무 의존하지 않도록 조심해야 합니다.  다음의 예를
+봅시다:
 
 	q = READ_ONCE(a);
 	if (q || 1 > 0)
 		WRITE_ONCE(b, 1);
 
-Because the first condition cannot fault and the second condition is
-always true, the compiler can transform this example as following,
-defeating control dependency:
+첫번째 조건은 거짓일 수 없고 두번째 조건은 항상 참이기 때문에, 컴파일러는 이
+예를 다음과 같이 바꿔서 컨트롤 의존성을 없애버릴 수 있습니다:
 
 	q = READ_ONCE(a);
 	WRITE_ONCE(b, 1);
 
-This example underscores the need to ensure that the compiler cannot
-out-guess your code.  More generally, although READ_ONCE() does force
-the compiler to actually emit code for a given load, it does not force
-the compiler to use the results.
+이 예는 컴파일러가 코드를 수정할 수 없다는 것을 분명히 해야 할 필요가 있다는
+점을 강조합니다.  조금 일반적으로 말해서, READ_ONCE() 가 컴파일러에게 주어진
+로드 오퍼레이션에 대해 코드를 만들도록 강제하긴 하지만, 컴파일러가 그 결과를
+사용하도록 강제하지는 않습니다.
 
-Finally, control dependencies do -not- provide transitivity.  This is
-demonstrated by two related examples, with the initial values of
-x and y both being zero:
+마지막으로, 컨트롤 의존성은 이행성을 제공하지 -않습니다-.  이건 x 와 y 가 둘 다
+0 이라는 초기값을 가졌다는 가정 하의 두개의 예제로 보이겠습니다:
 
 	CPU 0                     CPU 1
 	=======================   =======================
@@ -773,9 +766,9 @@ x and y both being zero:
 
 	assert(!(r1 == 1 && r2 == 1));
 
-The above two-CPU example will never trigger the assert().  However,
-if control dependencies guaranteed transitivity (which they do not),
-then adding the following CPU would guarantee a related assertion:
+이 두 CPU 예제에서는 assert() 의 조건은 결코 참일 수 없을 것입니다.  하지만,
+만약 컨트롤 의존성이 이행성을 (실제로는 그러지 않지만) 보장한다면, 다음의 CPU
+가 추가되면 관련된 조건을 보장할 겁니다:
 
 	CPU 2
 	=====================
@@ -783,46 +776,42 @@ then adding the following CPU would guarantee a related assertion:
 
 	assert(!(r1 == 2 && r2 == 1 && x == 2)); /* FAILS!!! */
 
-But because control dependencies do -not- provide transitivity, the above
-assertion can fail after the combined three-CPU example completes.  If you
-need the three-CPU example to provide ordering, you will need smp_mb()
-between the loads and stores in the CPU 0 and CPU 1 code fragments,
-that is, just before or just after the "if" statements.  Furthermore,
-the original two-CPU example is very fragile and should be avoided.
+하지만 컨트롤 의존성은 이행성을 제공하지 -않기- 때문에, 세개의 CPU 예제가 실행
+완료된 후에 assert() 의 조건은 거짓일 겁니다.  세개의 CPU 예제가 순서를 지키길
+원한다면, CPU 0 와 CPU 1 코드의 로드와 스토어 사이, "if" 문 바로 다음에
+smp_mb()를 넣어야 합니다.  더 나아가서, 최초의 두 CPU 예제는 매우 취약하고
+쓰이지 않아야만 합니다.
 
-These two examples are the LB and WWC litmus tests from this paper:
-http://www.cl.cam.ac.uk/users/pes20/ppc-supplemental/test6.pdf and this
-site: https://www.cl.cam.ac.uk/~pes20/ppcmem/index.html.
+이 두개의 예제는 다음 논문에 나온 LB 와 WWC 리트머스 테스트들입니다:
+http://www.cl.cam.ac.uk/users/pes20/ppc-supplemental/test6.pdf 와 이 사이트:
+https://www.cl.cam.ac.uk/~pes20/ppcmem/index.html.
 
-In summary:
+요약하자면:
 
-  (*) Control dependencies can order prior loads against later stores.
-      However, they do -not- guarantee any other sort of ordering:
-      Not prior loads against later loads, nor prior stores against
-      later anything.  If you need these other forms of ordering,
-      use smp_rmb(), smp_wmb(), or, in the case of prior stores and
-      later loads, smp_mb().
+  (*) 컨트롤 의존성은 앞의 로드들을 뒤의 스토어들에 대해 순서를 잡아줍니다.
+      하지만, 그 외의 어떤 순서도 보장하지 -않습니다-: 앞의 로드와 뒤의 로드들
+      사이에도, 앞의 스토어와 뒤의 어떤 것들 사이에도요.  이런 다른 형태의
+      순서가 필요하다면, smp_rmb() 나 smp_wmb(), 또는 앞의 스토어들과 뒤의
+      로드들 사이라면, smp_mb() 를 사용해야 할할 겁니다.
 
-  (*) If both legs of the "if" statement begin with identical stores
-      to the same variable, a barrier() statement is required at the
-      beginning of each leg of the "if" statement.
+  (*) "if" 문의 양 브랜치가 같은 변수에의 동일한 스토어들로 시작한다면, 각 "if"
+      문의 브랜치 시작지점에 barrier() 가 필요합니다.
 
-  (*) Control dependencies require at least one run-time conditional
-      between the prior load and the subsequent store, and this
-      conditional must involve the prior load.  If the compiler is able
-      to optimize the conditional away, it will have also optimized
-      away the ordering.  Careful use of READ_ONCE() and WRITE_ONCE()
-      can help to preserve the needed conditional.
+  (*) 컨트롤 의존성은 앞의 로드와 뒤의 스토어 사이에 최소 한번의 런타임
+      조건관계를 필요로 하며, 이 조건관계는 앞의 로드와 관계되어야 합니다.
+      만약 컴파일러가 조건 관계를 최적화로 없앨 수 있다면, 순서도 최적화
+      해버렸을 겁니다.  READ_ONCE() 와 WRITE_ONCE() 가 주어진 조건 관계를
+      유지하는데 도움이 될 수 있으니 잘 사용해야 합니다.
 
-  (*) Control dependencies require that the compiler avoid reordering the
-      dependency into nonexistence.  Careful use of READ_ONCE() or
-      atomic{,64}_read() can help to preserve your control dependency.
-      Please see the Compiler Barrier section for more information.
+  (*) 컨트롤 의존성을 위해선 컴파일러가 조건관계를 없애버리는 것을 막아야
+      합니다.  컨트롤 의존성이 사라지지 않게 하는데 주의 깊은 READ_ONCE() 나
+      atomic{,64}_read() 가 도움을 줄 수 있습니다.  더 많은 정보를 위해선
+      "컴파일러 배리어" 섹션을 참고하시기 바랍니다.
 
-  (*) Control dependencies pair normally with other types of barriers.
+  (*) 컨트롤 의존성은 보통 다른 타입의 배리어들과 엮입니다.
 
-  (*) Control dependencies do -not- provide transitivity.  If you
-      need transitivity, use smp_mb().
+  (*) 컨트롤 의존성은 이행성을 제공하지 -않습니다-. 이행성이 필요하다면,
+      smp_mb() 를 사용하세요.
 
 
 SMP BARRIER PAIRING
