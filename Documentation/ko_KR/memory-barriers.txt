@@ -36,7 +36,7 @@ Documentation/memory-barriers.txt
 
      - 메모리 배리어의 종류들.
      - 메모리 배리어들에 대해 가정해선 안될 것들.
-     - Data dependency barriers.
+     - 데이터 의존성 배리어.
      - Control dependencies.
      - SMP barrier pairing.
      - Examples of memory barrier sequences.
@@ -515,43 +515,42 @@ CPU 와/또는 디바이스들 간의 상호작용을 제정신으로 다룰 수
 	    Documentation/DMA-API.txt
 
 
-DATA DEPENDENCY BARRIERS
-------------------------
+데이터 의존성 배리어
+--------------------
 
-The usage requirements of data dependency barriers are a little subtle, and
-it's not always obvious that they're needed.  To illustrate, consider the
-following sequence of events:
+데이터 의존성 배리어의 사용이 필요한 영역은 약간 미묘하고 항상 그 필요가
+분명하지도 않습니다.  설명을 위해 다음의 이벤트 시퀀스를 봅시다:
 
 	CPU 1		      CPU 2
 	===============	      ===============
-	{ A == 1, B == 2, C = 3, P == &A, Q == &C }
+	{ A == 1, B == 2, C == 3, P == &A, Q == &C }
 	B = 4;
 	<write barrier>
 	WRITE_ONCE(P, &B)
 			      Q = READ_ONCE(P);
 			      D = *Q;
 
-There's a clear data dependency here, and it would seem that by the end of the
-sequence, Q must be either &A or &B, and that:
+여기엔 분명한 데이터 의존성이 존재하고, 이 시퀀스가 끝났을 때, Q 는 &A 또는 &B
+일 것이고, 따라서:
 
-	(Q == &A) implies (D == 1)
-	(Q == &B) implies (D == 4)
+	(Q == &A) 는 (D == 1) 를,
+	(Q == &B) 는 (D == 4) 를 의미합니다.
 
-But!  CPU 2's perception of P may be updated _before_ its perception of B, thus
-leading to the following situation:
+하지만!  CPU 2 의 P 인식은 자신의 B 인식 이전에 되었을 수도 있고, 따라서 다음의
+상황이 가능합니다:
 
 	(Q == &B) and (D == 2) ????
 
-Whilst this may seem like a failure of coherency or causality maintenance, it
-isn't, and this behaviour can be observed on certain real CPUs (such as the DEC
-Alpha).
+이게 일관성이나 인과 관계 유지에 실패한 것처럼 보일 수도 있겠지만, 그렇지
+않습니다, 그리고 이 현상은 (DEC Alpha 와 같은) 여러 실제 CPU 에서 발견될 수
+있습니다.
 
-To deal with this, a data dependency barrier or better must be inserted
-between the address load and the data load:
+이걸 제대로 해결하기 위해, 데이터 의존성 배리어나 그보다 나은 것이 주소를
+읽어올 때와 데이터를 읽어올 때 사이에 추가되어야만 합니다:
 
 	CPU 1		      CPU 2
 	===============	      ===============
-	{ A == 1, B == 2, C = 3, P == &A, Q == &C }
+	{ A == 1, B == 2, C == 3, P == &A, Q == &C }
 	B = 4;
 	<write barrier>
 	WRITE_ONCE(P, &B);
@@ -559,26 +558,23 @@ between the address load and the data load:
 			      <data dependency barrier>
 			      D = *Q;
 
-This enforces the occurrence of one of the two implications, and prevents the
-third possibility from arising.
+이것이 앞의 가정된 경우 두가지 중 하나만이 발생하고, 세번째 경우는 발생할 수
+없도록 합니다.
 
-[!] Note that this extremely counterintuitive situation arises most easily on
-machines with split caches, so that, for example, one cache bank processes
-even-numbered cache lines and the other bank processes odd-numbered cache
-lines.  The pointer P might be stored in an odd-numbered cache line, and the
-variable B might be stored in an even-numbered cache line.  Then, if the
-even-numbered bank of the reading CPU's cache is extremely busy while the
-odd-numbered bank is idle, one can see the new value of the pointer P (&B),
-but the old value of the variable B (2).
+[!] 대단히 비직관적인 이 상황은 분리된 캐시를 가진 기계들, 예를 들어 한 캐시
+뱅크가 짝수번 캐시 라인을 처리하고 다른 뱅크는 홀수번 캐시 라인을 처리하는 경우
+등에서 가장 잘 발생합니다.  포인터 P 는 홀수 번호의 캐시 라인에 있고, 변수 B 는
+짝수 번호 캐시 라인에 있다고 생각해 봅시다.  그리고서, 읽기 작업을 하는 CPU 의
+짝수번 뱅크가 매우 바쁜 사이 홀수번 뱅크는 놀고 있었다면, 포인터 P 는 새 값
+(&B) 을, 그리고 변수 B 는 옛날 값 (2) 을 가지고 있는 걸 볼수도 있습니다.
 
 
-Another example of where data dependency barriers might be required is where a
-number is read from memory and then used to calculate the index for an array
-access:
+데이터 의존성 배리어가 필요할 수 있는 또다른 예는 숫자가 메모리에서 읽혀져서는
+배열 접근을 위한 인덱스의 계산에 사용되는 경우입니다:
 
 	CPU 1		      CPU 2
 	===============	      ===============
-	{ M[0] == 1, M[1] == 2, M[3] = 3, P == 0, Q == 3 }
+	{ M[0] == 1, M[1] == 2, M[3] == 3, P == 0, Q == 3 }
 	M[1] = 4;
 	<write barrier>
 	WRITE_ONCE(P, 1);
@@ -587,13 +583,13 @@ access:
 			      D = M[Q];
 
 
-The data dependency barrier is very important to the RCU system,
-for example.  See rcu_assign_pointer() and rcu_dereference() in
-include/linux/rcupdate.h.  This permits the current target of an RCU'd
-pointer to be replaced with a new modified target, without the replacement
-target appearing to be incompletely initialised.
+데이터 의존성 배리어는 한 예로, RCU 시스템에서 매우 중요합니다.
+include/linux/rcupdate.h 의 rcu_assign_pointer() 와 rcu_dereference() 를
+참고하세요.  이건 RCU 된 포인터의 현재 타겟이 새로 수정된 타겟으로 바꾸는
+작업에서 새로 수정된 타겟이 초기화가 안된채로 바꿔쳐진 것으로 보이는 문제가
+없게 해줍니다.
 
-See also the subsection on "Cache Coherency" for a more thorough example.
+더 많은 예를 위해선 "캐시 일관성" 서브섹션을 참고하세요.
 
 
 CONTROL DEPENDENCIES
