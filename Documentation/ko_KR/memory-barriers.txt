@@ -35,7 +35,7 @@ Documentation/memory-barriers.txt
  (*) 메모리 배리어들이란 무엇인가?
 
      - 메모리 배리어의 종류들.
-     - What may not be assumed about memory barriers?
+     - 메모리 배리어들에 대해 가정해선 안될 것들.
      - Data dependency barriers.
      - Control dependencies.
      - SMP barrier pairing.
@@ -484,32 +484,31 @@ CPU 와/또는 디바이스들 간의 상호작용을 제정신으로 다룰 수
 코드에서는 성립하지 _않을수도_ 있습니다.
 
 
-WHAT MAY NOT BE ASSUMED ABOUT MEMORY BARRIERS?
-----------------------------------------------
+메모리 배리어들에 대해 가정해선 안될 것들
+-----------------------------------------
 
-There are certain things that the Linux kernel memory barriers do not guarantee:
+리눅스 커널 메모리 배리어들이 보장하지 않는 것들이 일부 있습니다:
 
- (*) There is no guarantee that any of the memory accesses specified before a
-     memory barrier will be _complete_ by the completion of a memory barrier
-     instruction; the barrier can be considered to draw a line in that CPU's
-     access queue that accesses of the appropriate type may not cross.
+ (*) 메모리 배리어 이전에 명시된 어떤 메모리 액세스도 메모리 배리어 명령의 수행
+     완료 시점까지 _완료_ 될 것이란 보장은 없습니다; 배리어가 하는 일은 CPU 의
+     액세스 큐에 일부 해당되는 타입의 액세스들은 넘을 수 없는 선을 긋는 것으로
+     이해할 수 있습니다.
 
- (*) There is no guarantee that issuing a memory barrier on one CPU will have
-     any direct effect on another CPU or any other hardware in the system.  The
-     indirect effect will be the order in which the second CPU sees the effects
-     of the first CPU's accesses occur, but see the next point:
+ (*) 한 CPU 에서 메모리 배리어를 요청하는 것은 시스템의 다른 CPU 나 하드웨어에
+     어떤 직접적인 영향을 끼친다는 보장은 존재하지 않습니다.  간접적인 영향은
+     두번째 CPU 가 바라보는 첫번째 CPU 의 액세스들의 순서에 가해집니다, 하지만
+     다음을 보세요:
 
- (*) There is no guarantee that a CPU will see the correct order of effects
-     from a second CPU's accesses, even _if_ the second CPU uses a memory
-     barrier, unless the first CPU _also_ uses a matching memory barrier (see
-     the subsection on "SMP Barrier Pairing").
+ (*) 한 CPU 가 두번째 CPU 의 메모리 액세스들의 결과로 일어난 효과를 옳은
+     순서대로 본다는 보장은 없습니다, _설령_ 두번째 CPU 가 메모리 배리어를
+     사용한다 해도, 첫번째 CPU _또한_ 그에 맞는 메모리 배리어를 사용하지
+     않는다면 말이죠 ("SMP 배리어 짝맞추기" 서브섹션을 참고하세요).
 
- (*) There is no guarantee that some intervening piece of off-the-CPU
-     hardware[*] will not reorder the memory accesses.  CPU cache coherency
-     mechanisms should propagate the indirect effects of a memory barrier
-     between CPUs, but might not do so in order.
+ (*) CPU 바깥의 하드웨어[*] 중 일부가 메모리 액세스들의 순서를 바꾸지 않는다는
+     보장은 없습니다.  CPU 캐시 일관성 메커니즘은 메모리 배리어의 간접적 영향을
+     CPU들 사이에 전파하긴 하지만, 순서대로 전파하지는 않을 수도 있습니다.
 
-	[*] For information on bus mastering DMA and coherency please read:
+	[*] 버스 마스터링 DMA 와 일관성에 대해서는 다음을 참고하시기 바랍니다:
 
 	    Documentation/PCI/pci.txt
 	    Documentation/DMA-API-HOWTO.txt
