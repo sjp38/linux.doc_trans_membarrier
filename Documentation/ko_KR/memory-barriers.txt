@@ -34,7 +34,7 @@ Documentation/memory-barriers.txt
 
  (*) 메모리 배리어들이란 무엇인가?
 
-     - Varieties of memory barrier.
+     - 메모리 배리어의 종류들.
      - What may not be assumed about memory barriers?
      - Data dependency barriers.
      - Control dependencies.
@@ -345,10 +345,10 @@ CPU 에게 기대할 수 있는 최소한의 보장사항들이 일부 있습니
 CPU 와/또는 디바이스들 간의 상호작용을 제정신으로 다룰 수 있게 해줍니다.
 
 
-VARIETIES OF MEMORY BARRIER
----------------------------
+메모리 배리어의 종류들
+----------------------
 
-Memory barriers come in four basic varieties:
+메모리 배리어들은 네개의 기본 종류로 분류됩니다:
 
  (1) Write (or store) memory barriers.
 
