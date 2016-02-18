@@ -404,21 +404,20 @@ CPU 와/또는 디바이스들 간의 상호작용을 제정신으로 다룰 수
      "SMP 배리어 짝짓기" 서브섹션을 참고하세요.
 
 
- (3) Read (or load) memory barriers.
+ (3) 읽기 (또는 로드) 메모리 배리어들.
 
-     A read barrier is a data dependency barrier plus a guarantee that all the
-     LOAD operations specified before the barrier will appear to happen before
-     all the LOAD operations specified after the barrier with respect to the
-     other components of the system.
+     읽기 배리어는 데이터 디펜던시의 기능에 추가로 배리어 이전에 명시된 모든
+     LOAD 오퍼레이션들이 배리어 이후에 명시되는 모든 LOAD 오퍼레이션들보다 먼저
+     행해진 것으로 시스템의 다른 컴포넌트들에 보여질 것을 보장합니다.
 
-     A read barrier is a partial ordering on loads only; it is not required to
-     have any effect on stores.
+     읽기 배리어는 로드 오퍼레이션에 행해지는 부분적 순서 세우기입니다; 스토어
+     오퍼레이션에 대해서는 어떤 영향도 끼치지 않습니다.
 
-     Read memory barriers imply data dependency barriers, and so can substitute
-     for them.
+     읽기 메모리 배리어들은 데이터 의존성 배리어를 내장하므로 데이터 의존성
+     배리어들을 대신할 수 있습니다.
 
-     [!] Note that read barriers should normally be paired with write barriers;
-     see the "SMP barrier pairing" subsection.
+     [!] 읽기 배리어들은 보통 쓰기 배리어들과 짝을 맞춰 사용되어야 합니다; "SMP
+     배리어 짝짓기" 서브섹션을 참고하세요.
 
 
  (4) General memory barriers.
