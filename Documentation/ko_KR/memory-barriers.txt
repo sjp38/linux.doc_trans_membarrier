@@ -39,7 +39,7 @@ Documentation/memory-barriers.txt
      - 데이터 의존성 배리어.
      - 컨트롤 의존성.
      - SMP 배리어 짝맞추기.
-     - Examples of memory barrier sequences.
+     - 메모리 배리어 시퀀스의 예.
      - Read memory barriers vs load speculation.
      - Transitivity
 
@@ -873,11 +873,11 @@ RELEASE 배리어, 또는 범용 배리어와 짝을 맞춥니다:
 	WRITE_ONCE(d, 4);    }----   --->{  y = READ_ONCE(b);
 
 
-EXAMPLES OF MEMORY BARRIER SEQUENCES
-------------------------------------
+메모리 배리어 시퀀스의 예
+-------------------------
 
-Firstly, write barriers act as partial orderings on store operations.
-Consider the following sequence of events:
+첫째, 쓰기 배리어들은 스토어 오퍼레이션들의 부분적 순서 세우기로 동작합니다.
+아래의 일련의 이벤트들을 보세요:
 
 	CPU 1
 	=======================
@@ -888,34 +888,34 @@ Consider the following sequence of events:
 	STORE D = 4
 	STORE E = 5
 
-This sequence of events is committed to the memory coherence system in an order
-that the rest of the system might perceive as the unordered set of { STORE A,
-STORE B, STORE C } all occurring before the unordered set of { STORE D, STORE E
-}:
+이 일련의 이벤트들은 일관적 메모리 시스템에 시스템의 나머지 요소들이
+원소들끼리는 순서 없는, 집합 { STORE A, STORE B, STORE C } 가 역시
+원소자들끼리의 순서 없는, 집합 { STORE D, STORE E } 보드 먼저 일어난 것으로
+보이도록 전달됩니다:
 
 	+-------+       :      :
 	|       |       +------+
 	|       |------>| C=3  |     }     /\
-	|       |  :    +------+     }-----  \  -----> Events perceptible to
-	|       |  :    | A=1  |     }        \/       the rest of the system
+	|       |  :    +------+     }-----  \  -----> 시스템의 나머지 요소에
+	|       |  :    | A=1  |     }        \/       보여지는 이벤트들
 	|       |  :    +------+     }
 	| CPU 1 |  :    | B=2  |     }
 	|       |       +------+     }
-	|       |   wwwwwwwwwwwwwwww }   <--- At this point the write barrier
-	|       |       +------+     }        requires all stores prior to the
-	|       |  :    | E=5  |     }        barrier to be committed before
-	|       |  :    +------+     }        further stores may take place
+	|       |   wwwwwwwwwwwwwwww }   <--- 여기서 쓰기 배리어가 배리어 앞의
+	|       |       +------+     }        모든 스토어가 이후의 스토어가
+	|       |  :    | E=5  |     }        나오기 전에 메모리 시스템에
+	|       |  :    +------+     }        전달되도록 합니다
 	|       |------>| D=4  |     }
 	|       |       +------+
 	+-------+       :      :
 	                   |
-	                   | Sequence in which stores are committed to the
-	                   | memory system by CPU 1
+	                   | CPU 1 에 의해 메모리 시스템에 전달되는
+	                   | 일련의 스토어 오퍼레이션들
 	                   V
 
 
-Secondly, data dependency barriers act as partial orderings on data-dependent
-loads.  Consider the following sequence of events:
+둘째, 데이터 의존성 배리어는 데이터 의존적 로드 오퍼레이션들의 부분적 순서
+세우기로 동작합니다.  다음 일련의 이벤트들을 보세요:
 
 	CPU 1			CPU 2
 	=======================	=======================
@@ -927,13 +927,13 @@ loads.  Consider the following sequence of events:
 	STORE D = 4		LOAD C (gets &B)
 				LOAD *C (reads B)
 
-Without intervention, CPU 2 may perceive the events on CPU 1 in some
-effectively random order, despite the write barrier issued by CPU 1:
+여기에 별다른 개입이 없다면, CPU 1 의 쓰기 배리어에도 불구하고 CPU 2 는 CPU 1
+의 이벤트들을 완전히 무작위적 순서로 인지하게 됩니다:
 
 	+-------+       :      :                :       :
-	|       |       +------+                +-------+  | Sequence of update
-	|       |------>| B=2  |-----       --->| Y->8  |  | of perception on
-	|       |  :    +------+     \          +-------+  | CPU 2
+	|       |       +------+                +-------+  | CPU 2 에 인지되는
+	|       |------>| B=2  |-----       --->| Y->8  |  | 업데이트 이벤트
+	|       |  :    +------+     \          +-------+  | 시퀀스
 	| CPU 1 |  :    | A=1  |      \     --->| C->&Y |  V
 	|       |       +------+       |        +-------+
 	|       |   wwwwwwwwwwwwwwww   |        :       :
@@ -946,22 +946,21 @@ effectively random order, despite the write barrier issued by CPU 1:
 	                               |        :       :       |       |
 	                               |        :       :       | CPU 2 |
 	                               |        +-------+       |       |
-	    Apparently incorrect --->  |        | B->7  |------>|       |
-	    perception of B (!)        |        +-------+       |       |
+	    분명히 잘못된        --->  |        | B->7  |------>|       |
+	    B 의 값 인지 (!)           |        +-------+       |       |
 	                               |        :       :       |       |
 	                               |        +-------+       |       |
-	    The load of X holds --->    \       | X->9  |------>|       |
-	    up the maintenance           \      +-------+       |       |
-	    of coherence of B             ----->| B->2  |       +-------+
+	    로드된 X 의 값은    --->    \       | X->9  |------>|       |
+	    B 의 정상적 값을             \      +-------+       |       |
+	    예측하게 해야 한다            ----->| B->2  |       +-------+
 	                                        +-------+
 	                                        :       :
 
 
-In the above example, CPU 2 perceives that B is 7, despite the load of *C
-(which would be B) coming after the LOAD of C.
+앞의 예에서, CPU 2 는 (B 의 값이 될) *C 의 값 읽기가 C 의 LOAD 뒤어 이어짐에도
+B 가 7 이라는 결과를 얻습니다.
 
-If, however, a data dependency barrier were to be placed between the load of C
-and the load of *C (ie: B) on CPU 2:
+하지만, 만약 데이터 의존성 배리어가 C 의 로드와 *C (즉, B) 사이에 있었다면:
 
 	CPU 1			CPU 2
 	=======================	=======================
@@ -974,7 +973,7 @@ and the load of *C (ie: B) on CPU 2:
 				<data dependency barrier>
 				LOAD *C (reads B)
 
-then the following will occur:
+다음과 같이 됩니다:
 
 	+-------+       :      :                :       :
 	|       |       +------+                +-------+
@@ -994,15 +993,15 @@ then the following will occur:
 	                               |        +-------+       |       |
 	                               |        | X->9  |------>|       |
 	                               |        +-------+       |       |
-	  Makes sure all effects --->   \   ddddddddddddddddd   |       |
-	  prior to the store of C        \      +-------+       |       |
-	  are perceptible to              ----->| B->2  |------>|       |
-	  subsequent loads                      +-------+       |       |
+	  C 의 스토어 앞의       --->   \   ddddddddddddddddd   |       |
+	  모든 이벤트 결과가             \      +-------+       |       |
+	  뒤의 로드에게                   ----->| B->2  |------>|       |
+	  보이게 강제한다                       +-------+       |       |
 	                                        :       :       +-------+
 
 
-And thirdly, a read barrier acts as a partial order on loads.  Consider the
-following sequence of events:
+세번째, 읽기 배리어는 로드 오퍼레이션들에의 부분적 순서 세우기로 동작합니다.
+아래의 일련의 이벤트를 봅시다:
 
 	CPU 1			CPU 2
 	=======================	=======================
@@ -1013,8 +1012,8 @@ following sequence of events:
 				LOAD B
 				LOAD A
 
-Without intervention, CPU 2 may then choose to perceive the events on CPU 1 in
-some effectively random order, despite the write barrier issued by CPU 1:
+CPU 1 은 쓰기 배리어를 쳤지만, 별다른 개입이 없다면 CPU 2 는 CPU 1 에서 행해진
+이벤트의 결과를 무작위적 순서로 인지하게 됩니다.
 
 	+-------+       :      :                :       :
 	|       |       +------+                +-------+
@@ -1037,8 +1036,7 @@ some effectively random order, despite the write barrier issued by CPU 1:
 	                                        :       :
 
 
-If, however, a read barrier were to be placed between the load of B and the
-load of A on CPU 2:
+하지만, 만약 읽기 배리어가 B 의 로드와 A 의 로드 사이에 존재한다면:
 
 	CPU 1			CPU 2
 	=======================	=======================
@@ -1050,8 +1048,7 @@ load of A on CPU 2:
 				<read barrier>
 				LOAD A
 
-then the partial ordering imposed by CPU 1 will be perceived correctly by CPU
-2:
+CPU 1 에 의해 만들어진 부분적 순서가 CPU 2 에도 그대로 인지됩니다:
 
 	+-------+       :      :                :       :
 	|       |       +------+                +-------+
@@ -1066,15 +1063,15 @@ then the partial ordering imposed by CPU 1 will be perceived correctly by CPU
 	                                |       +-------+       | CPU 2 |
 	                                |       :       :       |       |
 	                                |       :       :       |       |
-	  At this point the read ---->   \  rrrrrrrrrrrrrrrrr   |       |
-	  barrier causes all effects      \     +-------+       |       |
-	  prior to the storage of B        ---->| A->1  |------>|       |
-	  to be perceptible to CPU 2            +-------+       |       |
+	  여기서 읽기 배리어는   ---->   \  rrrrrrrrrrrrrrrrr   |       |
+	  B 의 스토어 이전의              \     +-------+       |       |
+	  모든 결과를 CPU 2 에             ---->| A->1  |------>|       |
+	  보이도록 한다                         +-------+       |       |
 	                                        :       :       +-------+
 
 
-To illustrate this more completely, consider what could happen if the code
-contained a load of A either side of the read barrier:
+더 완벽한 설명을 위해, A 의 로드가 읽기 배리어 앞과 뒤에 있으면 어떻게 될지
+생각해 봅시다:
 
 	CPU 1			CPU 2
 	=======================	=======================
@@ -1087,8 +1084,8 @@ contained a load of A either side of the read barrier:
 				<read barrier>
 				LOAD A [second load of A]
 
-Even though the two loads of A both occur after the load of B, they may both
-come up with different values:
+A 의 로드 두개가 모두 B 의 로드 이후에 있지만, 서로 다른 값을 얻어올 수
+있습니다:
 
 	+-------+       :      :                :       :
 	|       |       +------+                +-------+
@@ -1106,15 +1103,15 @@ come up with different values:
 	                                |       +-------+       |       |
 	                                |       | A->0  |------>| 1st   |
 	                                |       +-------+       |       |
-	  At this point the read ---->   \  rrrrrrrrrrrrrrrrr   |       |
-	  barrier causes all effects      \     +-------+       |       |
-	  prior to the storage of B        ---->| A->1  |------>| 2nd   |
-	  to be perceptible to CPU 2            +-------+       |       |
+	  여기서 읽기 배리어는   ---->   \  rrrrrrrrrrrrrrrrr   |       |
+	  B 의 스토어 이전의              \     +-------+       |       |
+	  모든 결과를 CPU 2 에             ---->| A->1  |------>| 2nd   |
+	  보이도록 한다                         +-------+       |       |
 	                                        :       :       +-------+
 
 
-But it may be that the update to A from CPU 1 becomes perceptible to CPU 2
-before the read barrier completes anyway:
+하지만 CPU 1 에서의 A 업데이트는 읽기 배리어가 완료되기 전에도 보일 수도 있긴
+합니다:
 
 	+-------+       :      :                :       :
 	|       |       +------+                +-------+
@@ -1139,9 +1136,9 @@ before the read barrier completes anyway:
 	                                        :       :       +-------+
 
 
-The guarantee is that the second load will always come up with A == 1 if the
-load of B came up with B == 2.  No such guarantee exists for the first load of
-A; that may come up with either A == 0 or A == 1.
+여기서 보장되는 건, 만약 B 의 로드가 B == 2 라는 결과를 봤다면, A 에의 두번째
+로드는 항상 A == 1 을 보게 될 것이라는 겁니다.  A 에의 첫번째 로드에는 그런
+보장이 없습니다; A == 0 이거나 A == 1 의 결과를 보게 될 것입니다.
 
 
 READ MEMORY BARRIERS VS LOAD SPECULATION
