@@ -38,7 +38,7 @@ Documentation/memory-barriers.txt
      - 메모리 배리어들에 대해 가정해선 안될 것들.
      - 데이터 의존성 배리어.
      - 컨트롤 의존성.
-     - SMP barrier pairing.
+     - SMP 배리어 짝맞추기.
      - Examples of memory barrier sequences.
      - Read memory barriers vs load speculation.
      - Transitivity
@@ -814,20 +814,19 @@ https://www.cl.cam.ac.uk/~pes20/ppcmem/index.html.
       smp_mb() 를 사용하세요.
 
 
-SMP BARRIER PAIRING
--------------------
+SMP 배리어 짝맞추기
+--------------------
 
-When dealing with CPU-CPU interactions, certain types of memory barrier should
-always be paired.  A lack of appropriate pairing is almost certainly an error.
+CPU 간 상호작용을 할 때에는 일부 타입의 메모리 배리어는 항상 짝을 맞춰
+사용되어야만 합니다.  적절하게 짝을 맞추지 못하면 거의 항상 에러를 유발합니다.
 
-General barriers pair with each other, though they also pair with most
-other types of barriers, albeit without transitivity.  An acquire barrier
-pairs with a release barrier, but both may also pair with other barriers,
-including of course general barriers.  A write barrier pairs with a data
-dependency barrier, a control dependency, an acquire barrier, a release
-barrier, a read barrier, or a general barrier.  Similarly a read barrier,
-control dependency, or a data dependency barrier pairs with a write
-barrier, an acquire barrier, a release barrier, or a general barrier:
+범용 배리어들은 타동성이 없을지라도 대부분의 다른 타입의 배리어들과도 짝을
+맞추지만, 범용 배리어끼리 짝을 맞춥니다.  ACQUIRE 배리어는 RELEASE 배리어와
+짝을 맞춥니다만, 범용 배리어를 포함해 다른 배리어들과도 짝을 맞출 수 있습니다.
+쓰기 배리어는 데이터 의존성 배리어나 컨트롤 의존성, ACQUIRE 배리어, RELEASE
+배리어, 읽기 배리어, 또는 범용 배리어와 짝을 맞춥니다.  비슷하게 읽기 배리어나
+컨트롤 의존성, 또는 데이터 의존성 배리어는 쓰기 배리어나 ACQUIRE 배리어,
+RELEASE 배리어, 또는 범용 배리어와 짝을 맞춥니다:
 
 	CPU 1		      CPU 2
 	===============	      ===============
@@ -837,7 +836,7 @@ barrier, an acquire barrier, a release barrier, or a general barrier:
 			      <read barrier>
 			      y = READ_ONCE(a);
 
-Or:
+또는:
 
 	CPU 1		      CPU 2
 	===============	      ===============================
@@ -847,7 +846,7 @@ Or:
 			      <data dependency barrier>
 			      y = *x;
 
-Or even:
+또는:
 
 	CPU 1		      CPU 2
 	===============	      ===============================
@@ -860,12 +859,10 @@ Or even:
 
 	assert(r1 == 0 || r2 == 0);
 
-Basically, the read barrier always has to be there, even though it can be of
-the "weaker" type.
+기본적으로, 읽기 배리어는 "더 약한" 타입일 순 있어도 항상 존재해야 합니다.
 
-[!] Note that the stores before the write barrier would normally be expected to
-match the loads after the read barrier or the data dependency barrier, and vice
-versa:
+[!] 쓰기 배리어 이전의 스토어 오퍼레이션은 일반적으로 읽기 배리어나 데이터
+의존성 배리어 뒤의 로드 오퍼레이션과 매치될 것이고, 반대도 마찬가지입니다:
 
 	CPU 1                               CPU 2
 	===================                 ===================
