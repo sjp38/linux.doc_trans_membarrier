@@ -37,7 +37,7 @@ Documentation/memory-barriers.txt
      - 메모리 배리어의 종류들.
      - 메모리 배리어들에 대해 가정해선 안될 것들.
      - 데이터 의존성 배리어.
-     - Control dependencies.
+     - 컨트롤 의존성.
      - SMP barrier pairing.
      - Examples of memory barrier sequences.
      - Read memory barriers vs load speculation.
