@@ -45,7 +45,7 @@ Documentation/memory-barriers.txt
 
  (*) 명시적 커널 배리어들.
 
-     - Compiler barrier.
+     - 컴파일러 배리어.
      - CPU memory barriers.
      - MMIO write barrier.
 
@@ -1301,160 +1301,146 @@ CPU 2 의 읽기 배리어가 자신의 읽기는 순서를 맞춰줘도, CPU 1 
   (*) MMIO 쓰기 배리어.
 
 
-COMPILER BARRIER
-----------------
+컴파일러 배리어
+---------------
 
-The Linux kernel has an explicit compiler barrier function that prevents the
-compiler from moving the memory accesses either side of it to the other side:
+리눅스 커널은 컴파일러가 메모리 액세스를 한쪽에서 다른 쪽으로 옮겨버리는 것을
+막아주는 명시적인 컴파일러 배리어를 가지고 있습니다:
 
 	barrier();
 
-This is a general barrier -- there are no read-read or write-write
-variants of barrier().  However, READ_ONCE() and WRITE_ONCE() can be
-thought of as weak forms of barrier() that affect only the specific
-accesses flagged by the READ_ONCE() or WRITE_ONCE().
+이건 범용 배리어입니다 -- barrier() 의 읽기-읽기 나 쓰기-쓰기 변종은 없습니다.
+하지만, READ_ONCE() 와 WRITE_ONCE() 는 READ_ONCE() 또는 WRITE_ONCE() 로 특정된
+액세스들에 대해서만 동작하는 barrier() 의 약화된 형태로 볼 수 있습니다.
 
-The barrier() function has the following effects:
+barrier() 함수는 다음과 같은 효과를 갖습니다:
 
- (*) Prevents the compiler from reordering accesses following the
-     barrier() to precede any accesses preceding the barrier().
-     One example use for this property is to ease communication between
-     interrupt-handler code and the code that was interrupted.
+ (*) 컴파일러가 barrier() 뒤의 액세스들이 barrier() 앞의 액세스보다 먼저
+     배치하지 못하게 합니다.  사용예를 들어보자면, 인터럽트 핸들러 코드와
+     인터럽트된 코드 사이의 통신을 줄이기 위해 사용될 수 있습니다.
 
- (*) Within a loop, forces the compiler to load the variables used
-     in that loop's conditional on each pass through that loop.
+ (*) 루프 내에서, 컴파일러가 루프 조건에 사용된 변수를 매 이터레이션마다
+     로드하도록 합니다.
 
-The READ_ONCE() and WRITE_ONCE() functions can prevent any number of
-optimizations that, while perfectly safe in single-threaded code, can
-be fatal in concurrent code.  Here are some examples of these sorts
-of optimizations:
+READ_ONCE() 와 WRITE_ONCE() 함수는 싱글 쓰레드 코드에서는 문제 없지만 동시적
+코드에서는 치명적일 수 있는 모든 최적화를 막습니다.  이런 류의 최적화들 예를
+몇가지 들어보면 다음과 같습니다:
 
- (*) The compiler is within its rights to reorder loads and stores
-     to the same variable, and in some cases, the CPU is within its
-     rights to reorder loads to the same variable.  This means that
-     the following code:
+ (*) 컴파일러는 같은 변수에 대한 로드와 스토어를 재배치 할 수 있으며, 어떤
+     경우에는 같은 변수에 대한 로드들을 재배치할 수도 있습니다.  이 말은 다음의
+     코드가:
 
 	a[0] = x;
 	a[1] = x;
 
-     Might result in an older value of x stored in a[1] than in a[0].
-     Prevent both the compiler and the CPU from doing this as follows:
+     x 의 예전 값이 a[1] 에, 새 값이 a[0] 에 있게 할 수 있다는 것입니다.
+     컴파일러도 CPU 도 이런 일을 못하게 하려면 다음과 같이 해야 합니다:
 
 	a[0] = READ_ONCE(x);
 	a[1] = READ_ONCE(x);
 
-     In short, READ_ONCE() and WRITE_ONCE() provide cache coherence for
-     accesses from multiple CPUs to a single variable.
+     간단히 정리해서, READ_ONCE() 와 WRITE_ONCE() 는 여러 CPU 에서 하나의
+     변수에 가해지는 액세스들에 캐시 일관성을 제공합니다.
 
- (*) The compiler is within its rights to merge successive loads from
-     the same variable.  Such merging can cause the compiler to "optimize"
-     the following code:
+ (*) 컴파일러는 같은 변수에 대한 연속적인 로드들을 병합할 수 있습니다.  그런
+     병합 작업으로 컴파일러는 다음의 코드를:
 
 	while (tmp = a)
 		do_something_with(tmp);
 
-     into the following code, which, although in some sense legitimate
-     for single-threaded code, is almost certainly not what the developer
-     intended:
+     다음과 같이, 싱글 쓰레드 코드에서는 말이 되지만, 개발자의 의도와 전혀 맞지
+     않는 방향으로 "최적화" 할 수 있습니다:
 
 	if (tmp = a)
 		for (;;)
 			do_something_with(tmp);
 
-     Use READ_ONCE() to prevent the compiler from doing this to you:
+     컴파일러가 이런 짓을 하지 못하게 하려면 READ_ONCE() 를 사용하세요:
 
 	while (tmp = READ_ONCE(a))
 		do_something_with(tmp);
 
- (*) The compiler is within its rights to reload a variable, for example,
-     in cases where high register pressure prevents the compiler from
-     keeping all data of interest in registers.  The compiler might
-     therefore optimize the variable 'tmp' out of our previous example:
+ (*) 컴파일러는, 예를 들어 레지스터 사용량이 많아 컴파일러가 모든 데이터를
+     레지스터에 담을 수 없는 경우, 변수를 다시 로드할 수 있습니다.  따라서
+     컴파일러는 앞의 예에서 변수 'tmp' 를 최적화 할 수 있습니다:
 
 	while (tmp = a)
 		do_something_with(tmp);
 
-     This could result in the following code, which is perfectly safe in
-     single-threaded code, but can be fatal in concurrent code:
+     이 코드는 다음과 같이 싱글 쓰레드에서는 완벽하지만 동시성이 존재하는
+     경우엔 치명적인 코드로 바뀔 수 있습니다:
 
 	while (a)
 		do_something_with(a);
 
-     For example, the optimized version of this code could result in
-     passing a zero to do_something_with() in the case where the variable
-     a was modified by some other CPU between the "while" statement and
-     the call to do_something_with().
+     예를 들어, 최적화된 이 코드는 해당 변수가 다른 CPU 에 의해 "while" 문과
+     do_something_with() 호출 사이에 바뀌어 do_something_with() 에 0을 넘길
+     수도 있습니다.
 
-     Again, use READ_ONCE() to prevent the compiler from doing this:
+     이번에도, 컴파일러가 그런 짓을 하는걸 막기 위해 READ_ONCE() 를 사용하세요:
 
 	while (tmp = READ_ONCE(a))
 		do_something_with(tmp);
 
-     Note that if the compiler runs short of registers, it might save
-     tmp onto the stack.  The overhead of this saving and later restoring
-     is why compilers reload variables.  Doing so is perfectly safe for
-     single-threaded code, so you need to tell the compiler about cases
-     where it is not safe.
+     레지스터가 부족한 상황을 겪는 경우, 컴파일러는 tmp 를 스택에 저장해둘 수도
+     있습니다.  이 저장과, 후에 다시 읽어들이는데 드는 오버헤드가 변수를 다시
+     읽어들이는 이유입니다.  그렇게 하는건 싱글 쓰레드 코드에서는 안전하기
+     때문에, 안전하지 않은 경우에는 컴파일러에게 직접 알려줘야 합니다.
 
- (*) The compiler is within its rights to omit a load entirely if it knows
-     what the value will be.  For example, if the compiler can prove that
-     the value of variable 'a' is always zero, it can optimize this code:
+ (*) 컴파일러는 그 값이 무엇일지 알고 있다면 로드를 아예 안할 수도 있습니다.
+     예를 들어, 다음의 코드는 변수 'a' 의 값이 항상 0임을 증명할 수 있다면:
 
 	while (tmp = a)
 		do_something_with(tmp);
 
-     Into this:
+     이렇게 최적화 해버릴 수 있습니다:
 
 	do { } while (0);
 
-     This transformation is a win for single-threaded code because it
-     gets rid of a load and a branch.  The problem is that the compiler
-     will carry out its proof assuming that the current CPU is the only
-     one updating variable 'a'.  If variable 'a' is shared, then the
-     compiler's proof will be erroneous.  Use READ_ONCE() to tell the
-     compiler that it doesn't know as much as it thinks it does:
+     이 변환은 싱글 쓰레드 코드에서는 도움이 되는데 로드와 브랜치를 제거했기
+     때문입니다.  문제는 컴파일러가 'a' 의 값을 업데이트 하는건 현재의 CPU 하나
+     뿐이라는 가정 위에서 증명을 했다는데 있습니다.  만약 변수 'a' 가 공유되어
+     있다면, 컴파일러의 증명은 틀린 것이 될겁니다.  컴파일러는 그 자신이
+     생각하는 것만큼 많은 것을 알고 있지 못함을 컴파일러에게 알리기 위해
+     READ_ONCE() 를 사용하세요:
 
 	while (tmp = READ_ONCE(a))
 		do_something_with(tmp);
 
-     But please note that the compiler is also closely watching what you
-     do with the value after the READ_ONCE().  For example, suppose you
-     do the following and MAX is a preprocessor macro with the value 1:
+     하지만 컴파일러는 READ_ONCE() 뒤에 나오는 값에 대해서도 눈길을 두고 있음을
+     기억하세요.  예를 들어, 다음의 코드에서 MAX 는 전처리기 매크로로, 1의 값을
+     갖는다고 해봅시다:
 
 	while ((tmp = READ_ONCE(a)) % MAX)
 		do_something_with(tmp);
 
-     Then the compiler knows that the result of the "%" operator applied
-     to MAX will always be zero, again allowing the compiler to optimize
-     the code into near-nonexistence.  (It will still load from the
-     variable 'a'.)
+     이렇게 되면 컴파일러는 MAX 를 가지고 수행되는 "%" 오퍼레이터의 결과가 항상
+     0이라는 것을 알게 되고, 컴파일러가 코드를 존재하지 않는 것처럼 최적화 하는
+     것을 허용하게 됩니다.  ('a' 변수의 로드는 여전히 이루어질겁니다.)
 
- (*) Similarly, the compiler is within its rights to omit a store entirely
-     if it knows that the variable already has the value being stored.
-     Again, the compiler assumes that the current CPU is the only one
-     storing into the variable, which can cause the compiler to do the
-     wrong thing for shared variables.  For example, suppose you have
-     the following:
+ (*) 비슷하게, 컴파일러는 변수가 이미 저장하려 하는 값을 가지고 있다는 것을
+     알면 스토어 자체를 제거할 수 있습니다.  이번에도, 컴파일러는 현재의 CPU
+     만이 그 변수에 값을 쓰는 오로지 하나의 존재라고 생각하여 컴파일러가 공유된
+     변수에 대해 잘못된 일을 하게 됩니다.  예를 들어, 다음과 같은 경우가
+     있습니다:
 
 	a = 0;
-	/* Code that does not store to variable a. */
+	/* 변수 a 에 스토어를 하지 않는 코드. */
 	a = 0;
 
-     The compiler sees that the value of variable 'a' is already zero, so
-     it might well omit the second store.  This would come as a fatal
-     surprise if some other CPU might have stored to variable 'a' in the
-     meantime.
+     컴파일러는 변수 'a' 의 값은 이미 0이라는 것을 알고, 따라서 두번째 스토어를
+     삭제할 겁니다.  만약 다른 CPU 가 그 사이 변수 'a' 에 다른 값을 썼다면
+     황당한 결과가 나올 겁니다.
 
-     Use WRITE_ONCE() to prevent the compiler from making this sort of
-     wrong guess:
+     컴파일러가 그런 잘못된 추측을 하지 않도록 WRITE_ONCE() 를 사용하세요:
 
 	WRITE_ONCE(a, 0);
-	/* Code that does not store to variable a. */
+	/* 변수 a 에 스토어를 하는 코드. */
 	WRITE_ONCE(a, 0);
 
- (*) The compiler is within its rights to reorder memory accesses unless
-     you tell it not to.  For example, consider the following interaction
-     between process-level code and an interrupt handler:
+ (*) 컴파일러는 하지 말라고 하지 않으면 메모리 액세스들을 재배열 할 수
+     있습니다.  예를 들어, 다음의 프로세스 레벨 코드와 인터럽트 핸들러 사이의
+     상호작용을 생각해 봅시다:
 
 	void process_level(void)
 	{
@@ -1468,9 +1454,8 @@ of optimizations:
 			process_message(msg);
 	}
 
-     There is nothing to prevent the compiler from transforming
-     process_level() to the following, in fact, this might well be a
-     win for single-threaded code:
+     컴파일러가 process_level() 을 다음과 같이 코드를 변환하는 것을 막을 수단이
+     여기엔 없고, 실제로, 이 변환은 싱글쓰레드에서라면 훌륭한 선택입니다:
 
 	void process_level(void)
 	{
@@ -1478,9 +1463,9 @@ of optimizations:
 		msg = get_message();
 	}
 
-     If the interrupt occurs between these two statement, then
-     interrupt_handler() might be passed a garbled msg.  Use WRITE_ONCE()
-     to prevent this as follows:
+     이 두개의 문장 사이에 인터럽트가 발생한다면, interrupt_handler() 는 의미를
+     알 수 없는 메세지를 받을 수도 있습니다.  이걸 막기 위해 다음과 같이
+     WRITE_ONCE() 를 사용하세요:
 
 	void process_level(void)
 	{
@@ -1494,81 +1479,74 @@ of optimizations:
 			process_message(READ_ONCE(msg));
 	}
 
-     Note that the READ_ONCE() and WRITE_ONCE() wrappers in
-     interrupt_handler() are needed if this interrupt handler can itself
-     be interrupted by something that also accesses 'flag' and 'msg',
-     for example, a nested interrupt or an NMI.  Otherwise, READ_ONCE()
-     and WRITE_ONCE() are not needed in interrupt_handler() other than
-     for documentation purposes.  (Note also that nested interrupts
-     do not typically occur in modern Linux kernels, in fact, if an
-     interrupt handler returns with interrupts enabled, you will get a
-     WARN_ONCE() splat.)
+     interrupt_handler() 안에서도 중첩된 인터럽트나 NMI 와 같이 인터럽트 핸들러
+     역시 'flag' 와 'msg' 에 접근하는 또다른 무언가에 인터럽트 될 수 있다면
+     READ_ONCE() 와 WRITE_ONCE() 래퍼들을 사용해야 함을 기억해 두세요.  만약
+     그런 가능성이 없다면, interrupt_handler() 안에서는 문서화 목적이 아니라면
+     READ_ONCE() 와 WRITE_ONCE() 는 필요치 않습니다.  (근래의 리눅스 커널에서
+     중첩된 인터럽트는 보통 잘 일어나지 않음도 기억해 두세요, 실제로, 어떤
+     인터럽트 핸들러가 인터럽트가 활성화된 채로 리턴하면 WARN_ONCE() 가
+     동작합니다.)
 
-     You should assume that the compiler can move READ_ONCE() and
-     WRITE_ONCE() past code not containing READ_ONCE(), WRITE_ONCE(),
-     barrier(), or similar primitives.
+     컴파일러는 READ_ONCE() 와 WRITE_ONCE() 이후의 READ_ONCE() 나 WRITE_ONCE(),
+     barrier(), 또는 비슷한 것들을 담고 있지 않은 코드들을 움직일 것을 가정해야
+     합니다.
 
-     This effect could also be achieved using barrier(), but READ_ONCE()
-     and WRITE_ONCE() are more selective:  With READ_ONCE() and
-     WRITE_ONCE(), the compiler need only forget the contents of the
-     indicated memory locations, while with barrier() the compiler must
-     discard the value of all memory locations that it has currented
-     cached in any machine registers.  Of course, the compiler must also
-     respect the order in which the READ_ONCE()s and WRITE_ONCE()s occur,
-     though the CPU of course need not do so.
+     이 효과는 barrier() 를 통해서도 만들 수 있지만, READ_ONCE() 와
+     WRITE_ONCE() 가 좀 더 안목 높은 선택입니다: READ_ONCE() 와 WRITE_ONCE()는
+     컴파일러에 주어진 메모리 영역에 대해서만 최적화 가능성을 잊도록 하지만,
+     barrier() 는 컴파일러가 지금까지 기계의 레지스터에 캐시해 놓은 모든 메모리
+     영역의 값을 버려야 하게 하기 때문입니다.  물론, 컴파일러는 READ_ONCE() 와
+     WRITE_ONCE() 가 일어난 순서도 지켜줍니다, CPU 는 물론 그러지 않겠지만요.
 
- (*) The compiler is within its rights to invent stores to a variable,
-     as in the following example:
+ (*) 컴파일러는 다음의 예에서와 같이 변수에의 스토어를 날조해낼 수도 있습니다:
 
 	if (a)
 		b = a;
 	else
 		b = 42;
 
-     The compiler might save a branch by optimizing this as follows:
+     컴파일러는 아래와 같은 최적화로 브랜치를 줄일 겁니다:
 
 	b = 42;
 	if (a)
 		b = a;
 
-     In single-threaded code, this is not only safe, but also saves
-     a branch.  Unfortunately, in concurrent code, this optimization
-     could cause some other CPU to see a spurious value of 42 -- even
-     if variable 'a' was never zero -- when loading variable 'b'.
-     Use WRITE_ONCE() to prevent this as follows:
+     싱글 쓰레드 코드에서는 이 최적화는 안전할 뿐 아니라 브랜치 갯수를
+     줄여줍니다.  하지만 안타깝게도, 동시성이 있는 코드에서는 이 최적화는 다른
+     CPU 가 'b' 를 로드할 때, -- 'a' 가 0이 아닌데도 -- 가짜인 값, 42를 보게
+     되는 경우를 가능하게 합니다.  이걸 방지하기 위해 WRITE_ONCE() 를
+     사용하세요:
 
 	if (a)
 		WRITE_ONCE(b, a);
 	else
 		WRITE_ONCE(b, 42);
 
-     The compiler can also invent loads.  These are usually less
-     damaging, but they can result in cache-line bouncing and thus in
-     poor performance and scalability.  Use READ_ONCE() to prevent
-     invented loads.
+     컴파일러는 로드도 날조해낼 수 있습니다.  일반적으로는 문제를 일으키지
+     않지만, 캐시 라인 바운싱을 일으켜 성능과 확장성을 떨어뜨릴 수 있습니다.
+     날조된 로드를 막기 위해선 READ_ONCE() 를 사용하세요.
 
- (*) For aligned memory locations whose size allows them to be accessed
-     with a single memory-reference instruction, prevents "load tearing"
-     and "store tearing," in which a single large access is replaced by
-     multiple smaller accesses.  For example, given an architecture having
-     16-bit store instructions with 7-bit immediate fields, the compiler
-     might be tempted to use two 16-bit store-immediate instructions to
-     implement the following 32-bit store:
+ (*) 정렬된 메모리 주소에 위치한, 한번의 메모리 참조 인스트럭션으로 액세스
+     가능한 크기의 데이터는 하나의 큰 액세스가 여러개의 작은 액세스들로
+     대체되는 "로드 티어링(load tearing)" 과 "스토어 티어링(store tearing)"을
+     방지합니다.  예를 들어, 주어진 아키텍쳐가 16-bit 스토어 인스트럭션을
+     제공하고 7-bit immediate field 를 가지고 있다면, 컴파일러는 다음의 32-bit
+     스토어 명령을 위해 두개의 16-bit store-immediate 명령을 사용하려 할겁니다:
 
 	p = 0x00010002;
 
-     Please note that GCC really does use this sort of optimization,
-     which is not surprising given that it would likely take more
-     than two instructions to build the constant and then store it.
-     This optimization can therefore be a win in single-threaded code.
-     In fact, a recent bug (since fixed) caused GCC to incorrectly use
-     this optimization in a volatile store.  In the absence of such bugs,
-     use of WRITE_ONCE() prevents store tearing in the following example:
+     GCC 는 스토어 할 상수값들을 만들고 또 그 값들을 스토어 하기 위해 두개가
+     넘는 인스트럭션을 사용하게 되는 이런 종류의 최적화를 실제로 함을 부디
+     기억해 주십시오.  따라서 이 최적화는 싱글 쓰레드 코드에서는
+     성공적이겠습니다.  실제로, 최근에 발생한 (그리고 고쳐진) 버그는 GCC 가
+     volatile 스토어에 비정상적으로 이 최적화를 사용하게 했습니다.  그런 버그가
+     없더라도, WRITE_ONCE() 의 사용은 다음과 같이 스토어 티어링을 방지합니다:
 
 	WRITE_ONCE(p, 0x00010002);
 
-     Use of packed structures can also result in load and store tearing,
-     as in this example:
+     Packed 구조체를 사용하는 것 역시 다음의 예처럼  로드 / 스토어 티어링을
+     유발할 수 있습니다:
 
 	struct __attribute__((__packed__)) foo {
 		short a;
@@ -1582,26 +1560,24 @@ of optimizations:
 	foo2.b = foo1.b;
 	foo2.c = foo1.c;
 
-     Because there are no READ_ONCE() or WRITE_ONCE() wrappers and no
-     volatile markings, the compiler would be well within its rights to
-     implement these three assignment statements as a pair of 32-bit
-     loads followed by a pair of 32-bit stores.  This would result in
-     load tearing on 'foo1.b' and store tearing on 'foo2.b'.  READ_ONCE()
-     and WRITE_ONCE() again prevent tearing in this example:
+     READ_ONCE() 나 WRITE_ONCE() 래퍼들도 없고 volatile 마킹도 없기 때문에,
+     컴파일러는 이 세개의 대입문을 32-bit 로드와 32-bit 스토어의 짝으로 변환할
+     수 있습니다.  이는 'foo1.b' 의 값의 로드 티어링과 'foo2.b' 의 스토어
+     티어링을 만들 것입니다.  READ_ONCE() 와 WRITE_ONCE() 가 이 예에서도
+     티어링을 막을 수 있습니다:
 
 	foo2.a = foo1.a;
 	WRITE_ONCE(foo2.b, READ_ONCE(foo1.b));
 	foo2.c = foo1.c;
 
-All that aside, it is never necessary to use READ_ONCE() and
-WRITE_ONCE() on a variable that has been marked volatile.  For example,
-because 'jiffies' is marked volatile, it is never necessary to
-say READ_ONCE(jiffies).  The reason for this is that READ_ONCE() and
-WRITE_ONCE() are implemented as volatile casts, which has no effect when
-its argument is already marked volatile.
+그렇지만, volatile 로 마크된 변수에 대해서는 READ_ONCE() 와 WRITE_ONCE() 가
+필요하지 않습니다.  예를 들어, 'jiffies' 는 volatile 로 마크되어 있기 때문에,
+READ_ONCE(jiffies) 라고 할 필요가 없습니다.  이 이유는 READ_ONCE() 와
+WRITE_ONCE() 가 실은 volatile 캐스팅으로 구현되어 있어서 인자가 이미 volatile
+로 마크되어 있다면 또다른 효과를 내지는 않기 때문입니다.
 
-Please note that these compiler barriers have no direct effect on the CPU,
-which may then reorder things however it wishes.
+이 컴파일러 배리어들은 CPU 에는 직접적 효과를 전혀 만들지 않기 때문에, 결국은
+재배치가 일어날 수도 있음을 부디 기억해 두십시오.
 
 
 CPU MEMORY BARRIERS
