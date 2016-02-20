@@ -43,7 +43,7 @@ Documentation/memory-barriers.txt
      - 읽기 메모리 배리어 vs 로드 스페큘레이션.
      - 타동성
 
- (*) Explicit kernel barriers.
+ (*) 명시적 커널 배리어들.
 
      - Compiler barrier.
      - CPU memory barriers.
@@ -1288,18 +1288,17 @@ CPU 2 의 읽기 배리어가 자신의 읽기는 순서를 맞춰줘도, CPU 1 
 당신의 코드가 타동성을 필요로 한다면, 범용 배리어를 사용하세요.
 
 
-========================
-EXPLICIT KERNEL BARRIERS
-========================
+====================
+명시적 커널 배리어들
+====================
 
-The Linux kernel has a variety of different barriers that act at different
-levels:
+리눅스 커널은 서로 다른 수준으로 동작하는 다양한 배리어들을 가지고 있습니다:
 
-  (*) Compiler barrier.
+  (*) 컴파일러 배리어.
 
-  (*) CPU memory barriers.
+  (*) CPU 메모리 배리어.
 
-  (*) MMIO write barrier.
+  (*) MMIO 쓰기 배리어.
 
 
 COMPILER BARRIER
