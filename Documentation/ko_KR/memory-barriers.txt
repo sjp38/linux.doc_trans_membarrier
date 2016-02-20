@@ -40,7 +40,7 @@ Documentation/memory-barriers.txt
      - 컨트롤 의존성.
      - SMP 배리어 짝맞추기.
      - 메모리 배리어 시퀀스의 예.
-     - Read memory barriers vs load speculation.
+     - 읽기 메모리 배리어 vs 로드 스페큘레이션.
      - Transitivity
 
  (*) Explicit kernel barriers.
@@ -1141,30 +1141,29 @@ A 의 로드 두개가 모두 B 의 로드 이후에 있지만, 서로 다른 �
 보장이 없습니다; A == 0 이거나 A == 1 의 결과를 보게 될 것입니다.
 
 
-READ MEMORY BARRIERS VS LOAD SPECULATION
-----------------------------------------
+읽기 메모리 배리어 VS 로드 스페큘레이션
+---------------------------------------
 
-Many CPUs speculate with loads: that is they see that they will need to load an
-item from memory, and they find a time where they're not using the bus for any
-other loads, and so do the load in advance - even though they haven't actually
-got to that point in the instruction execution flow yet.  This permits the
-actual load instruction to potentially complete immediately because the CPU
-already has the value to hand.
+많은 CPU들이 로드를 추측적으로 합니다: 메모리에서 어떤 데이터를 로드해야 하게
+될지 추측을 하고, 실제로 해당 데이터를 로드하는 인스트럭션을 아직 만나지
+않았더라도 다른 로드 작업이 없어 버스가 사용되고 있지 않을 때, 그 데이터를
+로드합니다.  이로 인해 실제 로드 인스트럭션은 CPU 가 이미 그 값을 가지고 있기
+때문에 즉시 완료됩니다.
 
-It may turn out that the CPU didn't actually need the value - perhaps because a
-branch circumvented the load - in which case it can discard the value or just
-cache it for later use.
+해당 CPU 는 실제로는 그 값이 필요치 않았다는 사실이 나올 수도 있는데 - 해당
+로드 인스트럭션이 가 브랜치로 우회되거나 했을 수 있겠죠 - , 이 때에는 그 값을
+버리거나 나중의 사용을 위해 캐시에 넣어둘 수 있습니다.
 
-Consider:
+다음을 생각해 봅시다:
 
 	CPU 1			CPU 2
 	=======================	=======================
 				LOAD B
-				DIVIDE		} Divide instructions generally
-				DIVIDE		} take a long time to perform
+				DIVIDE		} 나누기 명령은 일반적으로
+				DIVIDE		} 긴 시간을 필요로 합니다
 				LOAD A
 
-Which might appear as this:
+는 이렇게 될 수 있습니다:
 
 	                                        :       :       +-------+
 	                                        +-------+       |       |
@@ -1172,18 +1171,17 @@ Which might appear as this:
 	                                        +-------+       | CPU 2 |
 	                                        :       :DIVIDE |       |
 	                                        +-------+       |       |
-	The CPU being busy doing a --->     --->| A->0  |~~~~   |       |
-	division speculates on the              +-------+   ~   |       |
-	LOAD of A                               :       :   ~   |       |
+	나누기 하느라 바쁜       --->       --->| A->0  |~~~~   |       |
+	CPU 는 A 의 LOAD 를                     +-------+   ~   |       |
+	예측한다                                :       :   ~   |       |
 	                                        :       :DIVIDE |       |
 	                                        :       :   ~   |       |
-	Once the divisions are complete -->     :       :   ~-->|       |
-	the CPU can then perform the            :       :       |       |
-	LOAD with immediate effect              :       :       +-------+
+	나누기가 끝나면       --->     --->     :       :   ~-->|       |
+	CPU 는 해당 LOAD 를                     :       :       |       |
+	즉각 완료한다                           :       :       +-------+
 
 
-Placing a read barrier or a data dependency barrier just before the second
-load:
+읽기 배리어나 데이터 의존성 배리어를 두번째 로드 직전에 놓는다면:
 
 	CPU 1			CPU 2
 	=======================	=======================
@@ -1193,9 +1191,9 @@ load:
 				<read barrier>
 				LOAD A
 
-will force any value speculatively obtained to be reconsidered to an extent
-dependent on the type of barrier used.  If there was no change made to the
-speculated memory location, then the speculated value will just be used:
+예측으로 얻어지는 값은 사용된 배리어의 타입에 따라서 해당 값이 옳은지
+검토하됩니다.  만약 해당 메모리 영역에 변화가 없었다면, 예측으로 얻어두었던
+값이 사용됩니다:
 
 	                                        :       :       +-------+
 	                                        +-------+       |       |
@@ -1203,9 +1201,9 @@ speculated memory location, then the speculated value will just be used:
 	                                        +-------+       | CPU 2 |
 	                                        :       :DIVIDE |       |
 	                                        +-------+       |       |
-	The CPU being busy doing a --->     --->| A->0  |~~~~   |       |
-	division speculates on the              +-------+   ~   |       |
-	LOAD of A                               :       :   ~   |       |
+	나누기 하느라 바쁜       --->       --->| A->0  |~~~~   |       |
+	CPU 는 A 의 LOAD 를                     +-------+   ~   |       |
+	예측한다                                :       :   ~   |       |
 	                                        :       :DIVIDE |       |
 	                                        :       :   ~   |       |
 	                                        :       :   ~   |       |
@@ -1216,8 +1214,8 @@ speculated memory location, then the speculated value will just be used:
 	                                        :       :       +-------+
 
 
-but if there was an update or an invalidation from another CPU pending, then
-the speculation will be cancelled and the value reloaded:
+하지만 다른 CPU 에서 업데이트나 무효화가 있었다면, 그 예측은 무효화되고 그 값은
+다시 읽혀집니다:
 
 	                                        :       :       +-------+
 	                                        +-------+       |       |
@@ -1225,17 +1223,17 @@ the speculation will be cancelled and the value reloaded:
 	                                        +-------+       | CPU 2 |
 	                                        :       :DIVIDE |       |
 	                                        +-------+       |       |
-	The CPU being busy doing a --->     --->| A->0  |~~~~   |       |
-	division speculates on the              +-------+   ~   |       |
-	LOAD of A                               :       :   ~   |       |
+	나누기 하느라 바쁜       --->       --->| A->0  |~~~~   |       |
+	CPU 는 A 의 LOAD 를                     +-------+   ~   |       |
+	예측한다                                :       :   ~   |       |
 	                                        :       :DIVIDE |       |
 	                                        :       :   ~   |       |
 	                                        :       :   ~   |       |
 	                                    rrrrrrrrrrrrrrrrr   |       |
 	                                        +-------+       |       |
-	The speculation is discarded --->   --->| A->1  |------>|       |
-	and an updated value is                 +-------+       |       |
-	retrieved                               :       :       +-------+
+	예측성 동작은 무효화 되고    --->   --->| A->1  |------>|       |
+	업데이트된 값이 다시 읽혀진다           +-------+       |       |
+	                                        :       :       +-------+
 
 
 TRANSITIVITY
