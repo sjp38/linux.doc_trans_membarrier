@@ -41,7 +41,7 @@ Documentation/memory-barriers.txt
      - SMP 배리어 짝맞추기.
      - 메모리 배리어 시퀀스의 예.
      - 읽기 메모리 배리어 vs 로드 스페큘레이션.
-     - Transitivity
+     - 타동성
 
  (*) Explicit kernel barriers.
 
@@ -1236,61 +1236,56 @@ A 의 로드 두개가 모두 B 의 로드 이후에 있지만, 서로 다른 �
 	                                        :       :       +-------+
 
 
-TRANSITIVITY
-------------
+타동성
+------
 
-Transitivity is a deeply intuitive notion about ordering that is not
-always provided by real computer systems.  The following example
-demonstrates transitivity (also called "cumulativity"):
-
-	CPU 1			CPU 2			CPU 3
-	=======================	=======================	=======================
-		{ X = 0, Y = 0 }
-	STORE X=1		LOAD X			STORE Y=1
-				<general barrier>	<general barrier>
-				LOAD Y			LOAD X
-
-Suppose that CPU 2's load from X returns 1 and its load from Y returns 0.
-This indicates that CPU 2's load from X in some sense follows CPU 1's
-store to X and that CPU 2's load from Y in some sense preceded CPU 3's
-store to Y.  The question is then "Can CPU 3's load from X return 0?"
-
-Because CPU 2's load from X in some sense came after CPU 1's store, it
-is natural to expect that CPU 3's load from X must therefore return 1.
-This expectation is an example of transitivity: if a load executing on
-CPU A follows a load from the same variable executing on CPU B, then
-CPU A's load must either return the same value that CPU B's load did,
-or must return some later value.
-
-In the Linux kernel, use of general memory barriers guarantees
-transitivity.  Therefore, in the above example, if CPU 2's load from X
-returns 1 and its load from Y returns 0, then CPU 3's load from X must
-also return 1.
-
-However, transitivity is -not- guaranteed for read or write barriers.
-For example, suppose that CPU 2's general barrier in the above example
-is changed to a read barrier as shown below:
+타동성(transitivity)은 실제 컴퓨터 시스템에서 항상 제공되지는 않는, 순서
+맞추기에 대한 상당히 직관적인 개념입니다.  다음의 예는
+타동성("누적성(cumulativity)" 이라고도 합니다)을 보여줍니다:
 
 	CPU 1			CPU 2			CPU 3
 	=======================	=======================	=======================
 		{ X = 0, Y = 0 }
 	STORE X=1		LOAD X			STORE Y=1
-				<read barrier>		<general barrier>
+				<범용 배리어>		<범용 배리어>
 				LOAD Y			LOAD X
 
-This substitution destroys transitivity: in this example, it is perfectly
-legal for CPU 2's load from X to return 1, its load from Y to return 0,
-and CPU 3's load from X to return 0.
+CPU 2 의 X 로드가 1을 리턴했고 Y 로드가 0을 리턴했다고 해봅시다.  이는 CPU 2 의
+X 로드는 CPU 1 의 X 스토어 뒤에 이루어졌고 CPU 2 의 Y 로드는 CPU 3 의 Y 스토어
+전에 이루어졌음을 의미합니다.  그렇다면 "CPU 3 의 X 로드는 0을 리턴할 수
+있나요?"
 
-The key point is that although CPU 2's read barrier orders its pair
-of loads, it does not guarantee to order CPU 1's store.  Therefore, if
-this example runs on a system where CPUs 1 and 2 share a store buffer
-or a level of cache, CPU 2 might have early access to CPU 1's writes.
-General barriers are therefore required to ensure that all CPUs agree
-on the combined order of CPU 1's and CPU 2's accesses.
+CPU 2 의 X 로드는 CPU 1 의 스토어 이후에 이루어졌으니, CPU 3 의 X 로드는 1을
+리턴하는게 자연스럽습니다.  이런 생각이 타동성의 한 예입니다: CPU A 에서 실행된
+로드가 CPU B 에서의 같은 변수에 대한 로드를 뒤따른다면, CPU A 의 로드는 CPU B
+의 로드가 내놓은 값과 같거나 그 이후의 값을 내놓아야 내놓아야 합니다.
 
-To reiterate, if your code requires transitivity, use general barriers
-throughout.
+리눅스 커널에서 범용 배리어의 사용은 타동성을 보장해 줍니다.  따라서, 앞의
+예에서 CPU 2 의 X 로드가 1을, Y 로드는 0을 리턴했다면, CPU 3 의 X 로드는 반드시
+1을 리턴합니다.
+
+하지만, 읽기나 쓰기 배리어에 대해서는 타동성이 보장되지 -않습니다-.  예를 들어,
+앞의 예에서 CPU 2 의 범용 배리어가 아래처럼 읽기 배리어로 바뀐 경우를 생각해
+봅시다:
+
+	CPU 1			CPU 2			CPU 3
+	=======================	=======================	=======================
+		{ X = 0, Y = 0 }
+	STORE X=1		LOAD X			STORE Y=1
+				<읽기 배리어>		<범용 배리어>
+				LOAD Y			LOAD X
+
+이 코드는 타동성을 지키지 않습니다: 이 예에서는, CPU 2 의 X 로드가 1을
+리턴하고, Y 로드는 0을 리턴하지만 CPU 3 의 X 로드가 0을 리턴하는 것도 완전히
+합법적입니다.
+
+CPU 2 의 읽기 배리어가 자신의 읽기는 순서를 맞춰줘도, CPU 1 의 스토어를
+맞춰준다고는 보장할 수 없다는게 핵심입니다.  따라서, 이 예제가 CPU 1 과 CPU 2
+가 버퍼나 캐시를 공유하는 시스템에서 동작한다면, CPU 2 는 CPU 1 이 쓴 값에 좀
+빨리 접근할 수 있을 것입니다.  따라서 CPU 1 과 CPU 2 의 접근으로 조합된 순서를
+모든 CPU 가 동의할 수 있도록 하기 위해 범용 배리어가 필요합니다.
+
+당신의 코드가 타동성을 필요로 한다면, 범용 배리어를 사용하세요.
 
 
 ========================
