@@ -1703,6 +1703,7 @@ There are some more advanced barrier functions:
 
 
  (*) lockless_dereference();
+
      This can be thought of as a pointer-fetch wrapper around the
      smp_read_barrier_depends() data-dependency barrier.
 
