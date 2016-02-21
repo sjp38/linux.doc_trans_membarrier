@@ -46,7 +46,7 @@ Documentation/memory-barriers.txt
  (*) 명시적 커널 배리어들.
 
      - 컴파일러 배리어.
-     - CPU memory barriers.
+     - CPU 메모리 배리어.
      - MMIO write barrier.
 
  (*) Implicit kernel memory barriers.
@@ -1579,134 +1579,134 @@ WRITE_ONCE() 가 실은 volatile 캐스팅으로 구현되어 있어서 인자�
 재배치가 일어날 수도 있음을 부디 기억해 두십시오.
 
 
-CPU MEMORY BARRIERS
--------------------
+CPU 메모리 배리어
+-----------------
 
-The Linux kernel has eight basic CPU memory barriers:
+리눅스 커널은 다음의 여덟개 기본 CPU 메모리 배리어를 가지고 있습니다:
 
-	TYPE		MANDATORY		SMP CONDITIONAL
+	타입		필수			SMP 조건적
 	===============	=======================	===========================
-	GENERAL		mb()			smp_mb()
-	WRITE		wmb()			smp_wmb()
-	READ		rmb()			smp_rmb()
-	DATA DEPENDENCY	read_barrier_depends()	smp_read_barrier_depends()
+	범용		mb()			smp_mb()
+	쓰기		wmb()			smp_wmb()
+	읽기		rmb()			smp_rmb()
+	데이터 의존성	read_barrier_depends()	smp_read_barrier_depends()
 
 
-All memory barriers except the data dependency barriers imply a compiler
-barrier. Data dependencies do not impose any additional compiler ordering.
+데이터 의존성 배리어를 제외한 모든 메모리 배리어는 컴파일러 배리어를
+포함합니다.  데이터 의존성은 추가적인 컴파일러 순서 세우기를 포함하지 않습니다.
 
-Aside: In the case of data dependencies, the compiler would be expected
-to issue the loads in the correct order (eg. `a[b]` would have to load
-the value of b before loading a[b]), however there is no guarantee in
-the C specification that the compiler may not speculate the value of b
-(eg. is equal to 1) and load a before b (eg. tmp = a[1]; if (b != 1)
-tmp = a[b]; ). There is also the problem of a compiler reloading b after
-having loaded a[b], thus having a newer copy of b than a[b]. A consensus
-has not yet been reached about these problems, however the READ_ONCE()
-macro is a good place to start looking.
+방백: 데이터 의존성이 있는 경우, 컴파일러는 해당 로드를 올바른 순서로 일으킬
+것으로 (예: `a[b]` 는 a[b] 를 로드 하기 전에 b 의 값을 먼저 로드한다)
+예상됩니다만, C 사양에는 컴파일러가 b 의 값을 추측 (예: 1 과 같음) 해서
+b 이전에 a 를 로드 하는 코드 (예: tmp = a[1]; if (b != 1) tmp = a[b]; ) 를
+만들지 않아야 한다는 내용 같은 건 없습니다.  또한 컴파일러는 a[b] 를 로드한
+이후에 b 를 또다시 로드할 수도 있어서, a[b] 보다 최신 버전의 b 값을 가질 수도
+있습니다.  이 문제에 대한 의견의 일치는 아직  만들어지지 않았습니다만,
+READ_ONCE() 매크로부터 보기 시작하는게 좋을 겁니다.
 
-SMP memory barriers are reduced to compiler barriers on uniprocessor compiled
-systems because it is assumed that a CPU will appear to be self-consistent,
-and will order overlapping accesses correctly with respect to itself.
-However, see the subsection on "Virtual Machine Guests" below.
+SMP 메모리 배리어들은 유니프로세서로 컴파일된 시스템에서는 컴파일러 배리어로
+바뀌는데, 하나의 CPU 에서는 스스로 일관성을 유지하고, 겹치는 액세스들 역시
+올바른 순서로 행해질 것으로 가정하기 때문입니다.  하지만, 아래의 "Virtual
+Machine Guests" 서브섹션을 참고하십시오.
 
-[!] Note that SMP memory barriers _must_ be used to control the ordering of
-references to shared memory on SMP systems, though the use of locking instead
-is sufficient.
+[!] SMP 메모리 배리어는 SMP 시스템에서의 공유메모리로의 접근을 순서 세워야 할
+때, _반드시_ 사용되어야 함을 기억하세요, 다만 락을 대신 사용하는 것으로도
+충분하긴 합니다.
 
-Mandatory barriers should not be used to control SMP effects, since mandatory
-barriers impose unnecessary overhead on both SMP and UP systems. They may,
-however, be used to control MMIO effects on accesses through relaxed memory I/O
-windows.  These barriers are required even on non-SMP systems as they affect
-the order in which memory operations appear to a device by prohibiting both the
-compiler and the CPU from reordering them.
+필수 배리어들은 SMP 시스템에서도 UP 시스템에서도 불필요한 오버헤드를 갖기
+때문에 SMP 효과를 통제하는데 사용되어선 안됩니다.  하지만, 느슨한 메모리 I/O
+윈도우를 통한 액세스의 MMIO 효과를 통제할 때에는 사용될 수도 있습니다.  이
+배리어들은 SMP 가 아닌 시스템에서도 사용될 수 있는데, 컴파일러와 CPU 의 메모리
+오퍼레이션 재배치를 모두 막아서 메모리 오퍼레이션이 디바이스에 보이는 순서까지
+영향을 주기 때문입니다.
 
 
-There are some more advanced barrier functions:
+몇개의 고급 배리어 함수들도 있습니다:
 
  (*) smp_store_mb(var, value)
 
-     This assigns the value to the variable and then inserts a full memory
-     barrier after it.  It isn't guaranteed to insert anything more than a
-     compiler barrier in a UP compilation.
+     이 함수는 특정 변수에 특정 값을 대입하고 완전한 메모리 배리어를 칩니다.
+     UP 컴파일에서는 컴파일러 배리어보다 더한 것을 친다고는 보장하지 않습니다.
 
 
  (*) smp_mb__before_atomic();
  (*) smp_mb__after_atomic();
 
-     These are for use with atomic (such as add, subtract, increment and
-     decrement) functions that don't return a value, especially when used for
-     reference counting.  These functions do not imply memory barriers.
+     이것들은 값을 리턴하지 않는 (더하기, 빼기, 증가, 감소와 같은) 어토믹
+     함수들, 특히 레퍼런스 카운팅에 사용될 때를 위한 함수들입니다.  이
+     함수들은 메모리 배리어를 묵시적으로 사용하지는 않습니다.
 
-     These are also used for atomic bitop functions that do not return a
-     value (such as set_bit and clear_bit).
+     이것들은 값을 리턴하지 않는, 어토믹한 (set_bit 과 clear_bit 같은) 비트
+     연산에도 사용될 수 있습니다.
 
-     As an example, consider a piece of code that marks an object as being dead
-     and then decrements the object's reference count:
+     한 예로, 객체 하나를 무효화 하고 그 객체의 레퍼런스 카운트를 감소시키는
+     다음 코드를 보세요:
 
 	obj->dead = 1;
 	smp_mb__before_atomic();
 	atomic_dec(&obj->ref_count);
 
-     This makes sure that the death mark on the object is perceived to be set
-     *before* the reference counter is decremented.
+     이 코드는 객체의 업데이트된 death 마크가 레퍼런스 카운터 감소 동작
+     *이전에* 보일 것을 분명하게 합니다.
 
-     See Documentation/atomic_ops.txt for more information.  See the "Atomic
-     operations" subsection for information on where to use these.
+     더 많은 정보를 위해선 Documentation/atomic_ops.txt 문서를 참고하세요.
+     어디서 이것들을 사용해야 할지 궁금하다면 "Atomic operations" 서브섹션을
+     참고하세요.
 
 
  (*) lockless_dereference();
-     This can be thought of as a pointer-fetch wrapper around the
-     smp_read_barrier_depends() data-dependency barrier.
 
-     This is also similar to rcu_dereference(), but in cases where
-     object lifetime is handled by some mechanism other than RCU, for
-     example, when the objects removed only when the system goes down.
-     In addition, lockless_dereference() is used in some data structures
-     that can be used both with and without RCU.
+     이 함수는 smp_read_barrier_depends() 데이터 의존성 배리어를 사용하는
+     포인터 참조 래퍼 함수로 볼 수 있습니다.
+
+     이건 rcu_dereference() 와도 객체의 라이프타임이 RCU 이외의 메커니즘으로
+     관리된다는 점을 제외하면 유사한데, 예를 들면 객체가 시스템이 꺼질 때에만
+     제거되는 경우 등입니다.  참고로, lockless_dereference() 는 일부 데이터
+     구조에 RCU 와 함께 또는 단독으로 사용되고 있습니다.
 
 
  (*) dma_wmb();
  (*) dma_rmb();
 
-     These are for use with consistent memory to guarantee the ordering
-     of writes or reads of shared memory accessible to both the CPU and a
-     DMA capable device.
+     이것들은 CPU 와 DMA 가능한 디바이스에서 액세스 가능한 공유 메모리의 쓰기와
+     읽기 동작에 대한 순서를 보장하기 위해 일관성 있는 메모리에서 사용하기 위한
+     것들입니다.
 
-     For example, consider a device driver that shares memory with a device
-     and uses a descriptor status value to indicate if the descriptor belongs
-     to the device or the CPU, and a doorbell to notify it when new
-     descriptors are available:
+     예를 들어, 디바이스와 메모리를 공유하고 디스크립터가 디바이스에 속해
+     있는지 CPU 에 속해 있는지 알리기 위해 상태 값을 가지고, 새 디스크립터가
+     사용 가능해졌을 때 알리는 초인종(doorbell) 을 사용하는 디바이스 드라이버를
+     생각해 봅시다:
 
 	if (desc->status != DEVICE_OWN) {
-		/* do not read data until we own descriptor */
+		/* 디스크립터를 소유하기 전의 데이터를 읽지 않음 */
 		dma_rmb();
 
-		/* read/modify data */
+		/* 데이터를 읽고 씀 */
 		read_data = desc->data;
 		desc->data = write_data;
 
-		/* flush modifications before status update */
+		/* 상태 업데이트 전 수정사항을 반영 */
 		dma_wmb();
 
-		/* assign ownership */
+		/* 소유권을 수정 */
 		desc->status = DEVICE_OWN;
 
-		/* force memory to sync before notifying device via MMIO */
+		/* 디바이스에 알리기 전 MMIO 로 메모리의 동기화를 강제 */
 		wmb();
 
-		/* notify device of new descriptors */
+		/* 디바이스에 새 디스크립터를 알림 */
 		writel(DESC_NOTIFY, doorbell);
 	}
 
-     The dma_rmb() allows us guarantee the device has released ownership
-     before we read the data from the descriptor, and the dma_wmb() allows
-     us to guarantee the data is written to the descriptor before the device
-     can see it now has ownership.  The wmb() is needed to guarantee that the
-     cache coherent memory writes have completed before attempting a write to
-     the cache incoherent MMIO region.
+     dma_rmb() 는 디바이스는 디스크립터로부터 데이터를 읽어오기 전에 소유권을
+     내놓았음을 보장하게 하고, dma_wmb() 는 디바이스가 자신이 소유권을 가졌음을
+     보기 전에 디스크립터에 데이터가 쓰였음을 분명히 하도록 합니다.  wmb() 는
+     캐시 일관성이 없는 (cache incoherent) MMIO 영역에 쓰기를 시도하기 전에
+     캐시 일관성이 있는 메모리 (cache coherent memory) 쓰기가 완료되었음을
+     보장해주기 위해 필요합니다.
 
-     See Documentation/DMA-API.txt for more information on consistent memory.
+     일관성 있는 메모리에 대해 더 정보가 필요하면 Documentation/DMA-API.txt
+     문서를 참고하세요.
 
 MMIO WRITE BARRIER
 ------------------
