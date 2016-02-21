@@ -47,7 +47,7 @@ Documentation/memory-barriers.txt
 
      - 컴파일러 배리어.
      - CPU 메모리 배리어.
-     - MMIO write barrier.
+     - MMIO 쓰기 배리어.
 
  (*) Implicit kernel memory barriers.
 
@@ -1708,19 +1708,19 @@ Machine Guests" 서브섹션을 참고하십시오.
      일관성 있는 메모리에 대해 더 정보가 필요하면 Documentation/DMA-API.txt
      문서를 참고하세요.
 
-MMIO WRITE BARRIER
-------------------
+MMIO 쓰기 배리어
+----------------
 
-The Linux kernel also has a special barrier for use with memory-mapped I/O
-writes:
+리눅스 커널은 또한 memory-mapped I/O 쓰기를 위한 특별한 배리어도 가지고
+있습니다:
 
 	mmiowb();
 
-This is a variation on the mandatory write barrier that causes writes to weakly
-ordered I/O regions to be partially ordered.  Its effects may go beyond the
-CPU->Hardware interface and actually affect the hardware at some level.
+이것은 필수 쓰기 배리어의 변종으로 순서가 취약한 I/O 영역에의 쓰기가 부분적으로
+순서를 맞추도록 해줍니다.  이 함수의 효과는 CPU->하드웨어 인터페이스를 넘어서
+실제 하드웨어에 몇몇 수준까지는 영향을 끼칩니다.
 
-See the subsection "Locks vs I/O accesses" for more information.
+더 많은 정보를 위해선 "락 vs I/O 액세스" 서브섹션을 참고하세요.
 
 
 ===============================
