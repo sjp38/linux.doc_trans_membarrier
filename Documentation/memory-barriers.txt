@@ -2000,9 +2000,9 @@ or:
 	event_indicated = 1;
 	wake_up_process(event_daemon);
 
-A write memory barrier is implied by wake_up() and co. if and only if they wake
-something up.  The barrier occurs before the task state is cleared, and so sits
-between the STORE to indicate the event and the STORE to set TASK_RUNNING:
+A write memory barrier is implied by wake_up() and co.  if and only if they
+wake something up.  The barrier occurs before the task state is cleared, and so
+sits between the STORE to indicate the event and the STORE to set TASK_RUNNING:
 
 	CPU 1				CPU 2
 	===============================	===============================
