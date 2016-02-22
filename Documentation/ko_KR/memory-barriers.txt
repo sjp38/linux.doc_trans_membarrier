@@ -52,7 +52,7 @@ Documentation/memory-barriers.txt
  (*) 암묵적 커널 메모리 배리어.
 
      - Acquiring 함수.
-     - Interrupt disabling functions.
+     - 인터럽트 비활성화 함수.
      - Sleep and wake-up functions.
      - Miscellaneous functions.
 
@@ -1878,13 +1878,13 @@ ACQUIRE 와 RELEASE 가 락 획득과 해제라면, 그리고 락의 ACQUIRE 와
 
 
 
-INTERRUPT DISABLING FUNCTIONS
------------------------------
+인터럽트 비활성화 함수
+----------------------
 
-Functions that disable interrupts (ACQUIRE equivalent) and enable interrupts
-(RELEASE equivalent) will act as compiler barriers only.  So if memory or I/O
-barriers are required in such a situation, they must be provided from some
-other means.
+인터럽트를 비활성화 하는 함수 (ACQUIRE 와 동일) 와 인터럽트를 활성화 하는 함수
+(RELEASE 와 동일) 는 컴파일러 배리어와 동일하게만 동작합니다.  따라서, 그런
+상황에서는 메모리나 I/O 배리어가 필요하며, 그런 배리어들은 다른 방법으로
+제공되어야만 합니다.
 
 
 SLEEP AND WAKE-UP FUNCTIONS
