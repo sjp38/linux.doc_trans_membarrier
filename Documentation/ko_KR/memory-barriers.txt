@@ -49,7 +49,7 @@ Documentation/memory-barriers.txt
      - CPU 메모리 배리어.
      - MMIO 쓰기 배리어.
 
- (*) Implicit kernel memory barriers.
+ (*) 암묵적 커널 메모리 배리어.
 
      - Locking functions.
      - Interrupt disabling functions.
@@ -1723,16 +1723,16 @@ MMIO 쓰기 배리어
 더 많은 정보를 위해선 "락 vs I/O 액세스" 서브섹션을 참고하세요.
 
 
-===============================
-IMPLICIT KERNEL MEMORY BARRIERS
-===============================
+=========================
+암묵적 커널 메모리 배리어
+=========================
 
-Some of the other functions in the linux kernel imply memory barriers, amongst
-which are locking and scheduling functions.
+리눅스 커널의 일부 다른 함수들은 메모리 배리어를 내장하고 있는데, 락과 스케쥴
+관련 함수들이 대부분입니다.
 
-This specification is a _minimum_ guarantee; any particular architecture may
-provide more substantial guarantees, but these may not be relied upon outside
-of arch specific code.
+여기선 _최소한의_ 보장을 설명합니다; 특정 아키텍쳐에서는 이 설명보다 더 많은
+보장을 제공할 수도 있습니다만 그런 보장사항은 아키텍쳐 특정 코드에서만
+구현됩니다.
 
 
 ACQUIRING FUNCTIONS
