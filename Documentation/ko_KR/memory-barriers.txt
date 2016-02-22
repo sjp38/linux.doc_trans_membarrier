@@ -51,7 +51,7 @@ Documentation/memory-barriers.txt
 
  (*) 암묵적 커널 메모리 배리어.
 
-     - Locking functions.
+     - Acquiring 함수.
      - Interrupt disabling functions.
      - Sleep and wake-up functions.
      - Miscellaneous functions.
@@ -1735,130 +1735,124 @@ MMIO 쓰기 배리어
 구현됩니다.
 
 
-ACQUIRING FUNCTIONS
--------------------
+ACQUIRING 함수
+--------------
 
-The Linux kernel has a number of locking constructs:
+리눅스 커널은 다양한 락 구성체를 가지고 있습니다:
 
- (*) spin locks
- (*) R/W spin locks
- (*) mutexes
- (*) semaphores
- (*) R/W semaphores
+ (*) 스핀 락
+ (*) R/W 스핀 락
+ (*) 뮤텍스
+ (*) 세마포어
+ (*) R/W 세마포어
 
-In all cases there are variants on "ACQUIRE" operations and "RELEASE" operations
-for each construct.  These operations all imply certain barriers:
+각 구성체마다 모든 경우에 "ACQUIRE" 오퍼레이션과 "RELEASE" 오퍼레이션의 변종이
+존재합니다.  이 오퍼레이션들은 모두 적절한 배리어를 내포하고 있습니다:
 
- (1) ACQUIRE operation implication:
+ (1) ACQUIRE 오퍼레이션의 영향:
 
-     Memory operations issued after the ACQUIRE will be completed after the
-     ACQUIRE operation has completed.
+     ACQUIRE 후 요청되는 메모리 오퍼레이션들은 ACQUIRE 오퍼레이션이 완료된
+     이후 완료됩니다.
 
-     Memory operations issued before the ACQUIRE may be completed after
-     the ACQUIRE operation has completed.  An smp_mb__before_spinlock(),
-     combined with a following ACQUIRE, orders prior stores against
-     subsequent loads and stores. Note that this is weaker than smp_mb()!
-     The smp_mb__before_spinlock() primitive is free on many architectures.
+     ACQUIRE 전에 요청된 메모리 오퍼레이션들은 ACQUIRE 오퍼레이션이 완료된 후에
+     완료될 수도 있습니다.  smp_mb__before_spinlock() 이후 ACQUIRE 가 수행하는
+     코드는 앞의 스토어들을 이후의 로드와 스토어들에 대해 순서 맞춥니다.  이건
+     smp_mb() 보다 약한 제약임을 기억하세요!  smp_mb__before_spinlock() 은 많은
+     아키텍쳐에서는 사실 아무것도 아닙니다.
 
- (2) RELEASE operation implication:
+ (2) RELEASE 오퍼레이션의 영향:
 
-     Memory operations issued before the RELEASE will be completed before the
-     RELEASE operation has completed.
+     RELEASE 전에 이슈된 메모리 오퍼레이션들은 RELEASE 오퍼레이션이 완료되기
+     전에 완료됩니다.
 
-     Memory operations issued after the RELEASE may be completed before the
-     RELEASE operation has completed.
+     RELEASE 후에 요청된 메모리 오퍼레이션은 RELEASE 오퍼레이션 완료 전에
+     완료될 수도 있습니다.
 
- (3) ACQUIRE vs ACQUIRE implication:
+ (3) ACQUIRE vs ACQUIRE 영향:
 
-     All ACQUIRE operations issued before another ACQUIRE operation will be
-     completed before that ACQUIRE operation.
+     다른 ACQUIRE 오퍼레이션 이전에 요청된 모든 ACQUIRE 오퍼레이션은 앞의
+     ACQUIRE 오퍼레이션 이전에 완료됩니다.
 
  (4) ACQUIRE vs RELEASE implication:
 
-     All ACQUIRE operations issued before a RELEASE operation will be
-     completed before the RELEASE operation.
+     RELEASE 오퍼레이션보다 먼저 요청된 ACQUIRE 오퍼레이션은 해당 RELEASE
+     오퍼레이션보다 먼저 완료됩니다.
 
- (5) Failed conditional ACQUIRE implication:
+ (5) 실패한 조건적 ACQUIRE 영향:
 
-     Certain locking variants of the ACQUIRE operation may fail, either due to
-     being unable to get the lock immediately, or due to receiving an unblocked
-     signal whilst asleep waiting for the lock to become available.  Failed
-     locks do not imply any sort of barrier.
+     ACQUIRE 오퍼레이션의 일부 락 변종은 락을 곧바로 잡는데 실패하거나 락이
+     획득 가능해지도록 기다리는 도중 시그널을 받거나 해서 실패할 수 있습니다.
+     실패한 락은 어떤 배리어도 내포하지 않습니다.
 
-[!] Note: one of the consequences of lock ACQUIREs and RELEASEs being only
-one-way barriers is that the effects of instructions outside of a critical
-section may seep into the inside of the critical section.
+[!] 참고: 락 ACQUIRE 와 RELEASE 가 단방향 배리어임으로 인한 결과 중 하나는
+크리티컬 섹션 바깥의 인스트럭션의 영향이 크리티컬 섹션 내부로도 들어올 수
+있다는 의미입니다.
 
-An ACQUIRE followed by a RELEASE may not be assumed to be full memory barrier
-because it is possible for an access preceding the ACQUIRE to happen after the
-ACQUIRE, and an access following the RELEASE to happen before the RELEASE, and
-the two accesses can themselves then cross:
+RELEASE 이후에 요청되는 ACQUIRE 는 전체 메모리 배리어라 여겨지면 안되는데,
+ACQUIRE 이전의 액세스가 ACQUIRE 이후에 수행될 수 있고, RELEASE 이후의 액세스가
+RELEASE 이전에 수행될 수도 있으며, 그 두개의 액세스가 서로를 지나칠 수도 있기
+때문입니다:
 
 	*A = a;
 	ACQUIRE M
 	RELEASE M
 	*B = b;
 
-may occur as:
+는 다음과 같이 될 수도 있습니다:
 
 	ACQUIRE M, STORE *B, STORE *A, RELEASE M
 
-When the ACQUIRE and RELEASE are a lock acquisition and release,
-respectively, this same reordering can occur if the lock's ACQUIRE and
-RELEASE are to the same lock variable, but only from the perspective of
-another CPU not holding that lock.  In short, a ACQUIRE followed by an
-RELEASE may -not- be assumed to be a full memory barrier.
+ACQUIRE 와 RELEASE 가 락 획득과 해제라면, 그리고 락의 ACQUIRE 와 RELEASE 가
+같은 락 변수에 대한 것이라면, 해당 락을 쥐고 있지 않은 다른 CPU 의 관점에는
+똑같은 재배치가 일어나는 것을 볼 수 있습니다.  짧게 말해, ACQUIRE 와 RELEASE
+두개 오퍼레이션의 순차적 실행은 전체 메모리 배리어로 생각되어선 -안됩니다-.
 
-Similarly, the reverse case of a RELEASE followed by an ACQUIRE does
-not imply a full memory barrier.  Therefore, the CPU's execution of the
-critical sections corresponding to the RELEASE and the ACQUIRE can cross,
-so that:
+비슷하게, 앞의 반대 케이스인 RELEASE 와 ACQUIRE 두개 오퍼레이션의 순차적 실행
+역시 전체 메모리 배리어를 내포하지 않습니다.  따라서, 크리티컬 섹션들의 CPU
+수행은 RELEASE 와 ACQUIRE 를 가로지를 수 있으므로, 다음과 같은 코드는:
 
 	*A = a;
 	RELEASE M
 	ACQUIRE N
 	*B = b;
 
-could occur as:
+다음과 같이 수행될 수 있습니다:
 
 	ACQUIRE N, STORE *B, STORE *A, RELEASE M
 
-It might appear that this reordering could introduce a deadlock.
-However, this cannot happen because if such a deadlock threatened,
-the RELEASE would simply complete, thereby avoiding the deadlock.
+이런 재배치는 데드락을 일으킬 수도 있을 것으로 보일 수도 있습니다.  하지만,
+그런 데드락의 조짐이 있다면 RELEASE 는 단순히 완료될 것이므로 데드락은 존재할
+수 없습니다.
 
-	Why does this work?
+	어떻게 이게 동작하죠?
 
-	One key point is that we are only talking about the CPU doing
-	the reordering, not the compiler.  If the compiler (or, for
-	that matter, the developer) switched the operations, deadlock
-	-could- occur.
+	우리가 이야기 하고 있는건 재배치를 하는 CPU 에 대한 이야기이지,
+	컴파일러에 대한 것이 아니란 점이 핵심입니다.  컴파일러 (또는, 개발자)
+	가 오퍼레이션들을 재배치하면, 데드락은 일어날 -수도 있습-니다.
 
-	But suppose the CPU reordered the operations.  In this case,
-	the unlock precedes the lock in the assembly code.  The CPU
-	simply elected to try executing the later lock operation first.
-	If there is a deadlock, this lock operation will simply spin (or
-	try to sleep, but more on that later).	The CPU will eventually
-	execute the unlock operation (which preceded the lock operation
-	in the assembly code), which will unravel the potential deadlock,
-	allowing the lock operation to succeed.
+	하지만 CPU 가 오퍼레이션들을 재배치 했다고 생각해 보세요.  어셈블리
+	코드에서 언락이 락을 앞서는 경우를 생각해 봅시다.  CPU 는 단순히 뒤의
+	락 오퍼레이션을 먼저 실행하려 하게 됩니다.  만약 데드락이 존재한다면,
+	이 락 오퍼레이션은 단순히 스핀하며 계속해서 락을 시도합니다 (또는,
+	한참 후에겠지만, 잠듭니다).  CPU 는 언젠가는 (어셈블리 코드에서는 락을
+	앞섰던) 언락 오퍼레이션을 실행하는데, 이 언락 오퍼레이션은 잠재적
+	데드락을 해결하고, 락 오퍼레이션도 뒤이어 성공하게 됩니다.
 
-	But what if the lock is a sleeplock?  In that case, the code will
-	try to enter the scheduler, where it will eventually encounter
-	a memory barrier, which will force the earlier unlock operation
-	to complete, again unraveling the deadlock.  There might be
-	a sleep-unlock race, but the locking primitive needs to resolve
-	such races properly in any case.
+	하지만 만약 락이 잠을 자는 타입이었다면요?  그런 경우에 코드는
+	스케쥴러로 들어가려 할 거고, 여기서 결국은 메모리 배리어를 만나게
+	되는데, 이 메모리 배리어는 앞의 언락 오퍼레이션이 완료되도록 만들고,
+	데드락은 이번에도 해결됩니다.  잠을 자는 언락 경쟁상황도 있을 수
+	있겠습니다만, 락 관련 도구들은 그런 경쟁상황을 어떤 경우에도 제대로
+	해결할 수 있도록 해야 합니다.
 
-Locks and semaphores may not provide any guarantee of ordering on UP compiled
-systems, and so cannot be counted on in such a situation to actually achieve
-anything at all - especially with respect to I/O accesses - unless combined
-with interrupt disabling operations.
+락과 세마포어는 유니 프로세서로 컴파일된 시스템에서의 순서에 대해 보장을 하지
+않기 때문에, 그런 상황에서 인터럽트 비활성화 오퍼레이션과 함께가 아니라면 어떤
+일에도 - 특히 I/O 액세스와 관련해서는 - 제대로 사용될 수 없을 겁니다.
 
-See also the section on "Inter-CPU locking barrier effects".
+"CPU 간 락킹 배리어 효과" 섹션도 참고하시기 바랍니다.
 
 
-As an example, consider the following:
+예를 들어, 다음과 같은 코드를 생각해 봅시다:
 
 	*A = a;
 	*B = b;
@@ -1869,13 +1863,13 @@ As an example, consider the following:
 	*E = e;
 	*F = f;
 
-The following sequence of events is acceptable:
+다음의 이벤트 시퀀스가 생길 수 있습니다:
 
 	ACQUIRE, {*F,*A}, *E, {*C,*D}, *B, RELEASE
 
-	[+] Note that {*F,*A} indicates a combined access.
+	[+] {*F,*A} 는 조합된 액세스를 의미합니다.
 
-But none of the following are:
+하지만 다음과 같은 건 불가능하죠:
 
 	{*F,*A}, *B,	ACQUIRE, *C, *D,	RELEASE, *E
 	*A, *B, *C,	ACQUIRE, *D,		RELEASE, *E, *F
