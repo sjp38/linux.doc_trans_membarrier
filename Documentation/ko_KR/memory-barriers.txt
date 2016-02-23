@@ -56,7 +56,7 @@ Documentation/memory-barriers.txt
      - 슬립과 웨이크업 함수.
      - 그외의 함수들.
 
- (*) Inter-CPU locking barrier effects.
+ (*) CPU 간 ACQUIRING 배리어의 효과.
 
      - Locks vs memory accesses.
      - Locks vs I/O accesses.
@@ -2035,13 +2035,12 @@ event_indecated 에의 변경이 재우는 코드에게 my_data 이후에 보일
  (*) schedule() 과 그 유사한 것들이 전체 메모리 배리어를 내포합니다.
 
 
-===================================
-INTER-CPU ACQUIRING BARRIER EFFECTS
-===================================
+==============================
+CPU 간 ACQUIRING 배리어의 효과
+==============================
 
-On SMP systems locking primitives give a more substantial form of barrier: one
-that does affect memory access ordering on other CPUs, within the context of
-conflict on any particular lock.
+SMP 시스템에서의 락 도구들은 더욱 강력한 형태의 배리어를 제공합니다: 특정 락의
+겹치는 사용 관련해서는 다른 CPU 들의 메모리 액세스 순서에 영향을 끼칩니다.
 
 
 ACQUIRES VS MEMORY ACCESSES
