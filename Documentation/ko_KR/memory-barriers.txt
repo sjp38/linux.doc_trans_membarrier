@@ -61,7 +61,7 @@ Documentation/memory-barriers.txt
      - Acquire vs 메모리 액세스.
      - Acquire vs I/O 액세스.
 
- (*) Where are memory barriers needed?
+ (*) 메모리 배리어가 필요한 곳
 
      - Interprocessor interaction.
      - Atomic operations.
@@ -2139,22 +2139,22 @@ ACQUIRE VS I/O 액세스
 더 많은 정보를 위해선 Documenataion/DocBook/deviceiobook.tmpl 을 참고하세요.
 
 
-=================================
-WHERE ARE MEMORY BARRIERS NEEDED?
-=================================
+=========================
+메모리 배리어가 필요한 곳
+=========================
 
-Under normal operation, memory operation reordering is generally not going to
-be a problem as a single-threaded linear piece of code will still appear to
-work correctly, even if it's in an SMP kernel.  There are, however, four
-circumstances in which reordering definitely _could_ be a problem:
+평범한 시스템 운영 중에는, 설령 SMP 커널을 사용 중이라도 싱글 쓰레드로 동작하는
+순차적 코드 조각들은 올바르게 동작하는 것으로 보일 것이기 때문에 메모리
+오퍼레이션 재배치는 일반적으로 문제가 되지 않습니다.  하지만, 재배치가 문제가
+_될 수 있는_ 네가지 환경이 있습니다:
 
- (*) Interprocessor interaction.
+ (*) 프로세서간 상호 작용.
 
- (*) Atomic operations.
+ (*) 어토믹 오퍼레이션.
 
- (*) Accessing devices.
+ (*) 디바이스 접근.
 
- (*) Interrupts.
+ (*) 인터럽트.
 
 
 INTERPROCESSOR INTERACTION
