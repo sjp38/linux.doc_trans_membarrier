@@ -54,7 +54,7 @@ Documentation/memory-barriers.txt
      - Acquiring 함수.
      - 인터럽트 비활성화 함수.
      - 슬립과 웨이크업 함수.
-     - Miscellaneous functions.
+     - 그외의 함수들.
 
  (*) Inter-CPU locking barrier effects.
 
@@ -2027,12 +2027,12 @@ event_indecated 에의 변경이 재우는 코드에게 my_data 이후에 보일
 	wake_up(&event_wait_queue);
 
 
-MISCELLANEOUS FUNCTIONS
------------------------
+그외의 함수들
+-------------
 
-Other functions that imply barriers:
+그외의 배리어를 내포하는 함수들은 다음과 같습니다:
 
- (*) schedule() and similar imply full memory barriers.
+ (*) schedule() 과 그 유사한 것들이 전체 메모리 배리어를 내포합니다.
 
 
 ===================================
