@@ -2116,7 +2116,7 @@ three CPUs; then should the following sequence of events occur:
 
 Then there is no guarantee as to what order CPU 3 will see the accesses to *A
 through *H occur in, other than the constraints imposed by the separate locks
-on the separate CPUs. It might, for example, see:
+on the separate CPUs.  It might, for example, see:
 
 	*E, ACQUIRE M, ACQUIRE Q, *G, *C, *F, *A, *B, RELEASE Q, *D, *H, RELEASE M
 
