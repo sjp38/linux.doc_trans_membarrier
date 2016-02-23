@@ -58,7 +58,7 @@ Documentation/memory-barriers.txt
 
  (*) CPU 간 ACQUIRING 배리어의 효과.
 
-     - Locks vs memory accesses.
+     - Acquire vs 메모리 액세스.
      - Locks vs I/O accesses.
 
  (*) Where are memory barriers needed?
@@ -2043,11 +2043,11 @@ SMP 시스템에서의 락 도구들은 더욱 강력한 형태의 배리어를 
 겹치는 사용 관련해서는 다른 CPU 들의 메모리 액세스 순서에 영향을 끼칩니다.
 
 
-ACQUIRES VS MEMORY ACCESSES
----------------------------
+ACQUIRE VS 메모리 액세스
+------------------------
 
-Consider the following: the system has a pair of spinlocks (M) and (Q), and
-three CPUs; then should the following sequence of events occur:
+다음의 예를 생각해 봅시다: 시스템은 두개의 스핀락 (M) 과 (Q), 그리고 세개의 CPU
+를 가지고 있습니다; 여기에 다음의 이벤트 시퀀스가 발생합니다:
 
 	CPU 1				CPU 2
 	===============================	===============================
@@ -2058,13 +2058,13 @@ three CPUs; then should the following sequence of events occur:
 	RELEASE M			RELEASE Q
 	WRITE_ONCE(*D, d);		WRITE_ONCE(*H, h);
 
-Then there is no guarantee as to what order CPU 3 will see the accesses to *A
-through *H occur in, other than the constraints imposed by the separate locks
-on the separate CPUs. It might, for example, see:
+*A 로의 액세스부터 *H 로의 액세스까지가 어떤 순서로 CPU 3 에게 보여질지에
+대해서는 각 CPU 에서의 각 락 사용에 의해 내포되어 있는 제약을 제외하고는 어떤
+보장도 존재하지 않습니다.  예를 들어, 다음과 같은 순서로의 실행이 가능합니다:
 
 	*E, ACQUIRE M, ACQUIRE Q, *G, *C, *F, *A, *B, RELEASE Q, *D, *H, RELEASE M
 
-But it won't see any of:
+하지만 다음과 같은 경우는 있을 수 없습니다:
 
 	*B, *C or *D preceding ACQUIRE M
 	*A, *B or *C following RELEASE M
