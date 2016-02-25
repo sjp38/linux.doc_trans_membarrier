@@ -63,7 +63,7 @@ Documentation/memory-barriers.txt
 
  (*) 메모리 배리어가 필요한 곳
 
-     - Interprocessor interaction.
+     - 프로세서간 상호 작용.
      - Atomic operations.
      - Accessing devices.
      - Interrupts.
@@ -2157,20 +2157,19 @@ _될 수 있는_ 네가지 환경이 있습니다:
  (*) 인터럽트.
 
 
-INTERPROCESSOR INTERACTION
---------------------------
+프로세서간 상호 작용
+--------------------
 
-When there's a system with more than one processor, more than one CPU in the
-system may be working on the same data set at the same time.  This can cause
-synchronisation problems, and the usual way of dealing with them is to use
-locks.  Locks, however, are quite expensive, and so it may be preferable to
-operate without the use of a lock if at all possible.  In such a case
-operations that affect both CPUs may have to be carefully ordered to prevent
-a malfunction.
+두개 이상의 프로세서를 가진 시스템이 있다면, 시스템의 두개 이상의 CPU 는 동시에
+같은 데이터에 대해 작업을 할 수 있습니다.  이는 동기화 문제를 일으킬 수 있고,
+이 문제를 해결하는 일반적 방법은 락을 사용하는 것입니다.  하지만, 락은 상당히
+비용이 비싸고, 따라서 만약 가능하기만 하다면 락을 사용하지 않고 일을 처리하는
+것이 낫습니다.  그런 경우, 두 CPU 모두에 영향을 끼치는 오퍼레이션들은 오동작을
+막기 위해 신중하게 순서가 맞춰져야 합니다.
 
-Consider, for example, the R/W semaphore slow path.  Here a waiting process is
-queued on the semaphore, by virtue of it having a piece of its stack linked to
-the semaphore's list of waiting processes:
+예를 들어, R/W 세마포어의 느린 수행경로를 생각해 봅시다.  기다리는 프로세스는
+세마포어의 대기 프로세스들 리스트에 자신도 링크되어 있는채로 세마포어에 줄지어
+서 있습니다:
 
 	struct rw_semaphore {
 		...
@@ -2183,20 +2182,22 @@ the semaphore's list of waiting processes:
 		struct task_struct *task;
 	};
 
-To wake up a particular waiter, the up_read() or up_write() functions have to:
+특정 대기 상태 프로세스를 깨우기 위해, up_read() 나 up_write() 함수는 다음과
+같은 일을 해야 합니다:
 
- (1) read the next pointer from this waiter's record to know as to where the
-     next waiter record is;
+ (1) 다음 대기 상태 프로세스 레코드는 어디있는지 알기 위해 이 대기 상태
+     프로세스 레코드의 next 포인터를 읽습니다;
 
- (2) read the pointer to the waiter's task structure;
+ (2) 대기 상태 프로세스의 task 구조체로의 포인터를 읽습니다;
 
- (3) clear the task pointer to tell the waiter it has been given the semaphore;
+ (3) 해당 대기 상태 프로세스가 세마포어를 획득했음을 알리기 위해 task
+     포인터를 초기화 합니다;
 
- (4) call wake_up_process() on the task; and
+ (4) 해당 태스크에 대해 wake_up_process() 를 호출합니다; 그리고
 
- (5) release the reference held on the waiter's task struct.
+ (5) 해당 대기 상태 프로세스의 task 구조체를 잡고 있던 레퍼런스를 해제합니다.
 
-In other words, it has to perform this sequence of events:
+달리 말하자면, 다음 이벤트 시퀀스를 수행해야 합니다:
 
 	LOAD waiter->list.next;
 	LOAD waiter->task;
@@ -2204,17 +2205,16 @@ In other words, it has to perform this sequence of events:
 	CALL wakeup
 	RELEASE task
 
-and if any of these steps occur out of order, then the whole thing may
-malfunction.
+그리고 만약 이 이벤트들이 다른 순서로 수행된다면, 오동작이 일어날 수 있습니다.
 
-Once it has queued itself and dropped the semaphore lock, the waiter does not
-get the lock again; it instead just waits for its task pointer to be cleared
-before proceeding.  Since the record is on the waiter's stack, this means that
-if the task pointer is cleared _before_ the next pointer in the list is read,
-another CPU might start processing the waiter and might clobber the waiter's
-stack before the up*() function has a chance to read the next pointer.
+한번 세마포어의 대기줄에 들어갔고 세마포어 락을 놓았다면, 해당 대기 프로세스는
+락을 다시는 잡지 않습니다; 대신 자신의 task 포인터가 초기화 되길 기다립니다.
+레코드는 대기 프로세스의 스택에 있기 때문에, 지워진 task 포인터가 리스트의 next
+포인터가 읽혀지기 _전에_ 읽혀진다면, 다른 CPU 는 해당 대기 프로세스를 시작해
+버리고 up*() 함수가 next 포인터를 읽기 전에 대기 프로세스의 스택을 마구 건드릴
+수 있습니다.
 
-Consider then what might happen to the above sequence of events:
+그렇게 되면 위의 이벤트 시퀀스에 어떤 일이 일어나는지 생각해 보죠:
 
 	CPU 1				CPU 2
 	===============================	===============================
@@ -2234,10 +2234,10 @@ Consider then what might happen to the above sequence of events:
 	LOAD waiter->list.next;
 	--- OOPS ---
 
-This could be dealt with using the semaphore lock, but then the down_xxx()
-function has to needlessly get the spinlock again after being woken up.
+이 문제는 세마포어 락의 사용으로 해결될 수도 있겠지만, 그렇게 되면 down_xxx()
+함수가 불필요하게 깨어난 이후 스핀락을 또다시 얻어야만 합니다.
 
-The way to deal with this is to insert a general SMP memory barrier:
+이걸 해결하는 방법은 범용 SMP 메모리 배리어를 추가하는 겁니다:
 
 	LOAD waiter->list.next;
 	LOAD waiter->task;
@@ -2246,16 +2246,15 @@ The way to deal with this is to insert a general SMP memory barrier:
 	CALL wakeup
 	RELEASE task
 
-In this case, the barrier makes a guarantee that all memory accesses before the
-barrier will appear to happen before all the memory accesses after the barrier
-with respect to the other CPUs on the system.  It does _not_ guarantee that all
-the memory accesses before the barrier will be complete by the time the barrier
-instruction itself is complete.
+이 경우에, 배리어는 모든 배리어 이전의 메모리 액세스가 시스템의 나머지 CPU
+들에게 배리어 뒤의 메모리 액세스보다 이전에 일어난 것으로 보이게 만듭니다.
+배리어 이전의 메모리 액세스들이 배리어 명령 자체가 완료되는 시점까지
+완료된다고는 보장하지 _않습니다_.
 
-On a UP system - where this wouldn't be a problem - the smp_mb() is just a
-compiler barrier, thus making sure the compiler emits the instructions in the
-right order without actually intervening in the CPU.  Since there's only one
-CPU, that CPU's dependency ordering logic will take care of everything else.
+단일 프로세서 시스템 - 이게 문제가 되지 않을 - 에서 smp_mb() 는 그저 컴파일러가
+실제로는 CPU 안에서의 순서를 바꾸거나 하지 않고 주어진 순서대로 명령을 내리도록
+하는 컴파일러 배리어일 뿐입니다.  오직 하나의 CPU 만 있으므로, CPU 의 의존성
+순서 로직이 그 외의 모든것들을 알아서 처리할 겁니다.
 
 
 ATOMIC OPERATIONS
