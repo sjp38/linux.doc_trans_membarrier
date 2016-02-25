@@ -2396,9 +2396,9 @@ The following operations are special locking primitives:
 	clear_bit_unlock();
 	__clear_bit_unlock();
 
-These implement ACQUIRE-class and RELEASE-class operations. These should be used in
-preference to other operations when implementing locking primitives, because
-their implementations can be optimised on many architectures.
+These implement ACQUIRE-class and RELEASE-class operations.  These should be
+used in preference to other operations when implementing locking primitives,
+because their implementations can be optimised on many architectures.
 
 [!] Note that special memory barrier primitives are available for these
 situations because on some CPUs the atomic instructions used imply full memory
