@@ -64,7 +64,7 @@ Documentation/memory-barriers.txt
  (*) 메모리 배리어가 필요한 곳
 
      - 프로세서간 상호 작용.
-     - Atomic operations.
+     - 어토믹 오퍼레이션.
      - Accessing devices.
      - Interrupts.
 
@@ -2257,18 +2257,17 @@ _될 수 있는_ 네가지 환경이 있습니다:
 순서 로직이 그 외의 모든것들을 알아서 처리할 겁니다.
 
 
-ATOMIC OPERATIONS
+어토믹 오퍼레이션
 -----------------
 
-Whilst they are technically interprocessor interaction considerations, atomic
-operations are noted specially as some of them imply full memory barriers and
-some don't, but they're very heavily relied on as a group throughout the
-kernel.
+어토믹 오퍼레이션은 기술적으로는 프로세서간 상호작용으로 분류되며 그 중 일부는
+전체 메모리 배리어를 내포하고 또 일부는 내포하지 않지만, 커널이 상당히 의존하는
+그룹 중 하나입니다.
 
-Any atomic operation that modifies some state in memory and returns information
-about the state (old or new) implies an SMP-conditional general memory barrier
-(smp_mb()) on each side of the actual operation (with the exception of
-explicit lock operations, described later).  These include:
+메모리의 어떤 상태를 수정하고 해당 상태에 대한 (예전의 또는 최신의) 정보를
+리턴하는 어토믹 오퍼레이션은 모두 SMP-조건적 범용 메모리 배리어(smp_mb())를
+실제 오퍼레이션의 앞과 뒤에 내포합니다.  이런 오퍼레이션은 다음의 것들을
+포함합니다:
 
 	xchg();
 	atomic_xchg();			atomic_long_xchg();
@@ -2284,69 +2283,65 @@ explicit lock operations, described later).  These include:
 	test_and_clear_bit();
 	test_and_change_bit();
 
-	/* when succeeds */
+	/* 성공했을 때 */
 	cmpxchg();
 	atomic_cmpxchg();		atomic_long_cmpxchg();
 	atomic_add_unless();		atomic_long_add_unless();
 
-These are used for such things as implementing ACQUIRE-class and RELEASE-class
-operations and adjusting reference counters towards object destruction, and as
-such the implicit memory barrier effects are necessary.
+이것들은 메모리 배리어 효과가 필요한 ACQUIRE 부류와 RELEASE 부류 오퍼레이션들을
+구현할 때와 객체 소멸 시에 레퍼런스 카운터를 조정할 때 등에 사용됩니다.
 
 
-The following operations are potential problems as they do _not_ imply memory
-barriers, but might be used for implementing such things as RELEASE-class
-operations:
+다음의 오퍼레이션들은 메모리 배리어를 내포하지 _않기_ 때문에 문제가 될 수
+있지만, RELEASE 부류의 오퍼레이션들과 같은 것들을 구현할 때 사용될 수도
+있습니다:
 
 	atomic_set();
 	set_bit();
 	clear_bit();
 	change_bit();
 
-With these the appropriate explicit memory barrier should be used if necessary
-(smp_mb__before_atomic() for instance).
+이것들은 필요하다면 적절한 (예를 들면 smp_mb__before_atomic() 같은) 메모리
+배리어가 명시적으로 함께 사용되어야 합니다.
 
 
-The following also do _not_ imply memory barriers, and so may require explicit
-memory barriers under some circumstances (smp_mb__before_atomic() for
-instance):
+아래의 것들도 메모리 배리어를 내포하지 _않기_ 때문에, 일부 환경에서는 (예를
+들면 smp_mb__before_atomic() 과 같은) 명시적인 메모리 배리어 사용이 필요합니다.
 
 	atomic_add();
 	atomic_sub();
 	atomic_inc();
 	atomic_dec();
 
-If they're used for statistics generation, then they probably don't need memory
-barriers, unless there's a coupling between statistical data.
+통계 데이터 생성을 위해 사용된다면, 통계 데이터 사이에 결합 관계가 존재하거나
+하지 않는다면 메모리 배리어는 필요치 않을 겁니다.
 
-If they're used for reference counting on an object to control its lifetime,
-they probably don't need memory barriers because either the reference count
-will be adjusted inside a locked section, or the caller will already hold
-sufficient references to make the lock, and thus a memory barrier unnecessary.
+객체의 수명을 관리하기 위해 레퍼런스 카운팅 목적으로 사용된다면, 레퍼런스
+카운터는 락으로 보호되는 섹션에서만 조정되거나 호출하는 쪽이 이미 충분한
+레퍼런스를 잡고 있을 것이기 때문에 메모리 배리어는 아마 필요 없을 겁니다.
 
-If they're used for constructing a lock of some description, then they probably
-do need memory barriers as a lock primitive generally has to do things in a
-specific order.
+만약 어떤 락을 구성하기 위해 사용된다면, 락 관련 동작은 일반적으로 작업을 특정
+순서대로 진행해야 하므로 메모리 배리어가 필요할 수 있습니다.
 
-Basically, each usage case has to be carefully considered as to whether memory
-barriers are needed or not.
+기본적으로, 각 사용처에서는 메모리 배리어가 필요한지 아닌지 충분히 고려해야
+합니다.
 
-The following operations are special locking primitives:
+아래의 오퍼레이션들은 특별한 락 관련 동작들입니다:
 
 	test_and_set_bit_lock();
 	clear_bit_unlock();
 	__clear_bit_unlock();
 
-These implement ACQUIRE-class and RELEASE-class operations. These should be used in
-preference to other operations when implementing locking primitives, because
-their implementations can be optimised on many architectures.
+이것들은 ACQUIRE 류와 RELEASE 류의 오퍼레이션들을 구현합니다.  락 관련 도구를
+구현할 때에는 이것들을 좀 더 선호하는 편이 나은데, 이것들의 구현은 많은
+아키텍쳐에서 최적화 될 수 있기 때문입니다.
 
-[!] Note that special memory barrier primitives are available for these
-situations because on some CPUs the atomic instructions used imply full memory
-barriers, and so barrier instructions are superfluous in conjunction with them,
-and in such cases the special barrier primitives will be no-ops.
+[!] 이런 상황에 사용할 수 있는 특수한 메모리 배리어 도구들이 있는데, 일부 CPU
+에서 어토믹 인스트럭션의 사용은 전체 메모리 배리어를 내포하고 있어 어토믹
+오퍼레이션과 메모리 배리어를 함께 사용하는 것은 불필요한 경우가 있을 수 있기
+때문에, 해당 특수 메모리 배리어 도구들은 이런 경우 no-op 으로 처리됩니다.
 
-See Documentation/atomic_ops.txt for more information.
+더 많은 정보를 위해선 Documentation/atomic_ops.txt 를 참고하세요.
 
 
 ACCESSING DEVICES
