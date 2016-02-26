@@ -66,7 +66,7 @@ Documentation/memory-barriers.txt
      - 프로세서간 상호 작용.
      - 어토믹 오퍼레이션.
      - 디바이스 액세스.
-     - Interrupts.
+     - 인터럽트.
 
  (*) Kernel I/O barrier effects.
 
@@ -2372,23 +2372,23 @@ _될 수 있는_ 네가지 환경이 있습니다:
 더 많은 정보를 위해선 Documentation/DocBook/deviceiobook.tmpl 을 참고하십시오.
 
 
-INTERRUPTS
-----------
+인터럽트
+--------
 
-A driver may be interrupted by its own interrupt service routine, and thus the
-two parts of the driver may interfere with each other's attempts to control or
-access the device.
+드라이버는 자신의 인터럽트 서비스 루틴에 의해 인터럽트 당할 수 있기 때문에
+드라이버의 이 두 부분은 각자의 디바이스 제어 또는 액세스 부분이 상호 간섭할 수
+있습니다.
 
-This may be alleviated - at least in part - by disabling local interrupts (a
-form of locking), such that the critical operations are all contained within
-the interrupt-disabled section in the driver.  Whilst the driver's interrupt
-routine is executing, the driver's core may not run on the same CPU, and its
-interrupt is not permitted to happen again until the current interrupt has been
-handled, thus the interrupt handler does not need to lock against that.
+드라이버의 크리티컬한 오퍼레이션들은 모두 인터럽트 비활성화된 섹션에 집어넣거나
+하는 식으로 로컬 인터럽트의 비활성화 (락의 한 형태) 를 통해 이런 상호 간섬을 -
+최소한 부분적으로라도 - 줄여야 합니다.  드라이버의 인터럽트 루틴이 실행 중인
+동안, 해당 드라이버의 코어는 다른 CPU 에서 수행중일 수도 있고, 인터럽트는
+현재의 인터럽트가 처리되는 중에는 또다시 일어나지 못하도록 되어 있어서 인터럽트
+핸들러는 그에 대해서는 락을 잡지 않아도 됩니다.
 
-However, consider a driver that was talking to an ethernet card that sports an
-address register and a data register.  If that driver's core talks to the card
-under interrupt-disablement and then the driver's interrupt handler is invoked:
+하지만, 어드레스 레지스터와 데이터 레지스터를 갖는 이더넷 카드를 다루는
+드라이버를 생각해 봅시다.  만약 이 드라이버의 코어가 인터럽트가 비활성화된
+상태의 카드와 이야기 중이고 드라이버의 인터럽트 핸들러가 호출되었다면:
 
 	LOCAL IRQ DISABLE
 	writew(ADDR, 3);
@@ -2399,26 +2399,26 @@ under interrupt-disablement and then the driver's interrupt handler is invoked:
 	q = readw(DATA);
 	</interrupt>
 
-The store to the data register might happen after the second store to the
-address register if ordering rules are sufficiently relaxed:
+만약 순서 규칙이 충분히 완화되어 있다면 데이터 레지스터에의 스토어는 어드레스
+레지스터에 두번째로 행해지는 스토어 이후에 일어날 수도 있습니다:
 
 	STORE *ADDR = 3, STORE *ADDR = 4, STORE *DATA = y, q = LOAD *DATA
 
 
-If ordering rules are relaxed, it must be assumed that accesses done inside an
-interrupt disabled section may leak outside of it and may interleave with
-accesses performed in an interrupt - and vice versa - unless implicit or
-explicit barriers are used.
+만약 순서 규칙이 완화되어있다면, 묵시적이든 명시적이든 배리어가 사용되지
+않았다면 인터럽트 비활성화 섹션에서 일어난 액세스가 바깥으로 새어서
+인터럽트에서 일어난 액세스와 섞일 수도 있다고 - 그리고 그 반대도 - 가정해야만
+합니다.
 
-Normally this won't be a problem because the I/O accesses done inside such
-sections will include synchronous load operations on strictly ordered I/O
-registers that form implicit I/O barriers. If this isn't sufficient then an
-mmiowb() may need to be used explicitly.
+그런 섹션 안에서 일어나는 I/O 액세스들은 묵시적 I/O 배리어를 형성하는 엄격한
+순서 규칙의 I/O 레지스터에의 동기화된 로드 오퍼레이션을 포함하기 때문에
+일반적으로는 이런게 문제가 되지 않습니다.  만약 이걸로는 충분치 않다면 mmiowb()
+가 명시적으로 사용될 필요가 있습니다.
 
 
-A similar situation may occur between an interrupt routine and two routines
-running on separate CPUs that communicate with each other. If such a case is
-likely, then interrupt-disabling locks should be used to guarantee ordering.
+하나의 인터럽트 루틴과 별도의 CPU 에서 수행중이며 서로 통신 중인 두 루틴
+사이에도 비슷한 상황이 일어날 수 있습니다.  만약 그런 경우라면, 순서를 보장하기
+위해 인터럽트 비활성화 락이 사용되어져야만 합니다.
 
 
 ==========================
