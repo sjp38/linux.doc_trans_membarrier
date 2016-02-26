@@ -2478,12 +2478,12 @@ explicit barriers are used.
 
 Normally this won't be a problem because the I/O accesses done inside such
 sections will include synchronous load operations on strictly ordered I/O
-registers that form implicit I/O barriers. If this isn't sufficient then an
+registers that form implicit I/O barriers.  If this isn't sufficient then an
 mmiowb() may need to be used explicitly.
 
 
 A similar situation may occur between an interrupt routine and two routines
-running on separate CPUs that communicate with each other. If such a case is
+running on separate CPUs that communicate with each other.  If such a case is
 likely, then interrupt-disabling locks should be used to guarantee ordering.
 
 
