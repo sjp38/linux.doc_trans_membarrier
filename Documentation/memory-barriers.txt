@@ -2497,8 +2497,8 @@ functions:
  (*) inX(), outX():
 
      These are intended to talk to I/O space rather than memory space, but
-     that's primarily a CPU-specific concept. The i386 and x86_64 processors do
-     indeed have special I/O space access cycles and instructions, but many
+     that's primarily a CPU-specific concept.  The i386 and x86_64 processors
+     do indeed have special I/O space access cycles and instructions, but many
      CPUs don't have such a concept.
 
      The PCI bus, amongst others, defines an I/O space concept which - on such
