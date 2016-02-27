@@ -70,7 +70,7 @@ Documentation/memory-barriers.txt
 
  (*) 커널 I/O 배리어의 효과.
 
- (*) Assumed minimum execution ordering model.
+ (*) 가정되는 최소한의 실행 순서 모델.
 
  (*) The effects of the cpu cache.
 
@@ -2486,35 +2486,34 @@ I/O 메모리에 접근할 때, 드라이버는 반드시 적절한 액세스 �
      적절하게 수행될 것입니다.
 
 
-========================================
-ASSUMED MINIMUM EXECUTION ORDERING MODEL
-========================================
+================================
+가정되는 최소한의 실행 순서 모델
+================================
 
-It has to be assumed that the conceptual CPU is weakly-ordered but that it will
-maintain the appearance of program causality with respect to itself.  Some CPUs
-(such as i386 or x86_64) are more constrained than others (such as powerpc or
-frv), and so the most relaxed case (namely DEC Alpha) must be assumed outside
-of arch-specific code.
+컨셉적으로 CPU 는 주어진 프로그램에 대해 프로그램 그 자체에는 인과성을 지키는
+것처럼 보이게 하지만 일반적으로는 순서를 거의 지켜주지 않는다고 가정되어야만
+합니다.  (i386 이나 x86_64 같은) 일부 CPU 들은 (powerpc 나 frv 와 같은) 다른
+것들에 비해 순서 재배치에 제약을 줍니다만, 아키텍쳐 종속적 코드 이외 부분에서는
+순서에 대한 제약이 가장 완화된 경우 (DEC Alpha) 를 가정해야만 합니다.
 
-This means that it must be considered that the CPU will execute its instruction
-stream in any order it feels like - or even in parallel - provided that if an
-instruction in the stream depends on an earlier instruction, then that
-earlier instruction must be sufficiently complete[*] before the later
-instruction may proceed; in other words: provided that the appearance of
-causality is maintained.
+이 말은 CPU 는 자신에게 주어지는 인스트럭션 스트림을 스트림 내의 한
+인스트럭션이 앞의 인스트럭션에 종속적이라면 그 앞의 인스트럭션은 그 뒤의 종속적
+인스트럭션이 실행되기 전에 완료[*]될 수 있어야 한다는 제약 외에는 자신이 원하는
+순서대로 - 또는 심지어 병렬적으로 - 실행할 수 있음을 의미합니다; 이 제약은
+인과성이 지켜짐을 의미합니다.
 
- [*] Some instructions have more than one effect - such as changing the
-     condition codes, changing registers or changing memory - and different
-     instructions may depend on different effects.
+ [*] 일부 인스트럭션들은 하나 이상의 효과 - 조건 코드를 바꾼다던지, 레지스터나
+     메모리를 바꾼다던지 -  를 내며, 다른 인스트럭션들은 서로 다른 효과에
+     종속될 수도 있습니다.
 
-A CPU may also discard any instruction sequence that winds up having no
-ultimate effect.  For example, if two adjacent instructions both load an
-immediate value into the same register, the first may be discarded.
+CPU 는 최종적으로는 아무 효과도 만들지 않는 인스트럭션 시퀀스는 없애버릴 수도
+있습니다.  예를 들어, 만약 두개의 연속되는 인스트럭션이 둘 다 같은 레지스터에
+직접적인 값 (immediate value) 을 집어넣는다면, 첫번째 인스트럭션은 버려질 수도
+있습니다.
 
 
-Similarly, it has to be assumed that compiler might reorder the instruction
-stream in any way it sees fit, again provided the appearance of causality is
-maintained.
+비슷하게, 컴파일러는 역시 프로그램의 인과성만 지켜준다면 인스트럭션 스트림을
+자신이 보기에 올바르다 생각하는대로 재배치 할 수 있습니다.
 
 
 ============================
