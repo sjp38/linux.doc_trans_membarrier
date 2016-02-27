@@ -2520,7 +2520,7 @@ functions:
 
      Whether these are guaranteed to be fully ordered and uncombined with
      respect to each other on the issuing CPU depends on the characteristics
-     defined for the memory window through which they're accessing. On later
+     defined for the memory window through which they're accessing.  On later
      i386 architecture machines, for example, this is controlled by way of the
      MTRR registers.
 
