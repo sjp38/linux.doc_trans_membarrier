@@ -68,7 +68,7 @@ Documentation/memory-barriers.txt
      - 디바이스 액세스.
      - 인터럽트.
 
- (*) Kernel I/O barrier effects.
+ (*) 커널 I/O 배리어의 효과.
 
  (*) Assumed minimum execution ordering model.
 
@@ -2421,75 +2421,69 @@ _될 수 있는_ 네가지 환경이 있습니다:
 위해 인터럽트 비활성화 락이 사용되어져야만 합니다.
 
 
-==========================
-KERNEL I/O BARRIER EFFECTS
-==========================
+======================
+커널 I/O 배리어의 효과
+======================
 
-When accessing I/O memory, drivers should use the appropriate accessor
-functions:
+I/O 메모리에 접근할 때, 드라이버는 반드시 적절한 액세스 함수를 사용해야 합니다:
 
  (*) inX(), outX():
 
-     These are intended to talk to I/O space rather than memory space, but
-     that's primarily a CPU-specific concept. The i386 and x86_64 processors do
-     indeed have special I/O space access cycles and instructions, but many
-     CPUs don't have such a concept.
+     이것들은 메모리 공간보다는 I/O 공간에 이야기를 하도록 의도하고
+     만들어졌습니다만, 그건 CPU 마다 다른 컨셉입니다.  i386 과 x86_64
+     프로세서들은 실제로 특별한 I/O 공간 액세스 사이클과 명령어를 가지고
+     있습니다만, 다른 많은 CPU 들에는 그런 컨셉이 존재하지 않습니다.
 
-     The PCI bus, amongst others, defines an I/O space concept which - on such
-     CPUs as i386 and x86_64 - readily maps to the CPU's concept of I/O
-     space.  However, it may also be mapped as a virtual I/O space in the CPU's
-     memory map, particularly on those CPUs that don't support alternate I/O
-     spaces.
+     다른 것들 중, PCI 버스는 I/O 공간 컨셉을 정의하는데, 이는 - i386 과 x86_64
+     같은 CPU 에서 - CPU 의 I/O 공간 컨셉으로 쉽게 매치됩니다.  하지만, 이는
+     또한, 특히나 대체할 I/O 공간이 없는 CPU 에서는 CPU 의 메모리 맵의 가상 I/O
+     공간으로 매치될 수도 있습니다.
 
-     Accesses to this space may be fully synchronous (as on i386), but
-     intermediary bridges (such as the PCI host bridge) may not fully honour
-     that.
+     이 공간으로의 액세스는 (i386 등에서는) 완전하게 동기화 됩니다만, 중간의
+     (PCI 호스트 브리지와 같은) 브리지들은 이를 완전히 보장하진 않을수
+     있습니다.
 
-     They are guaranteed to be fully ordered with respect to each other.
+     그것들은 상호간에 완전하게 순서가 보장됩니다.
 
-     They are not guaranteed to be fully ordered with respect to other types of
-     memory and I/O operation.
+     그것들은 다른 타입의 메모리와 I/O 오퍼레이션과의 순서는 완전하게
+     보장되지는 않습니다.
 
  (*) readX(), writeX():
 
-     Whether these are guaranteed to be fully ordered and uncombined with
-     respect to each other on the issuing CPU depends on the characteristics
-     defined for the memory window through which they're accessing. On later
-     i386 architecture machines, for example, this is controlled by way of the
-     MTRR registers.
+     이것들이 요청되는 CPU 에서 서로 완전히 순서가 맞춰지고 결합되지 않는지에
+     대한 보장 여부는 이들이 액세스 하는 메모리 윈도우에 정의된 특성에 의해
+     결정됩니다.  예를 들어, 최신의 i386 아키텍쳐 머신에서는 MTRR 레지스터로
+     이를 조정합니다.
 
-     Ordinarily, these will be guaranteed to be fully ordered and uncombined,
-     provided they're not accessing a prefetchable device.
+     일반적으로는, 프리페치 가능한 디바이스를 액세스 하는게 아니라면, 이것들은
+     완전히 순서가 맞춰지고 결합되지 않게 보장될 겁니다.
 
-     However, intermediary hardware (such as a PCI bridge) may indulge in
-     deferral if it so wishes; to flush a store, a load from the same location
-     is preferred[*], but a load from the same device or from configuration
-     space should suffice for PCI.
+     하지만, (PCI 브리지와 같은) 중간의 하드웨어는 만약 그것이 원한다면 집행을
+     연기시킬 수 있습니다; 스토어 명령을 실제로 수행 시키는 것은(flush), 같은
+     위치에서 로드를 하는 것으로 가능합니다[*], 하지만 PCI 의 경우는 같은
+     디바이스나 환경 구성 영역에서의 로드만으로도 가능합니다.
 
-     [*] NOTE! attempting to load from the same location as was written to may
-	 cause a malfunction - consider the 16550 Rx/Tx serial registers for
-	 example.
+     [*] 주의! 쓰여진 것과 같은 위치에서 로드를 시도하는 것은 오동작을 일으킬
+         수도 있습니다 - 예로 16650 Rx/Tx 시리얼 레지스터를 생각해 보세요.
 
-     Used with prefetchable I/O memory, an mmiowb() barrier may be required to
-     force stores to be ordered.
+     프리페치 가능한 I/O 메모리가 사용되면, 스토어 명령들이 순서를 지키도록
+     하기 위해선 mmiowb() 배리어가 필요할 수 있습니다.
 
-     Please refer to the PCI specification for more information on interactions
-     between PCI transactions.
+     PCI 트랜잭션 사이의 상호작용에 대해 더 많은 정보를 위해선 PCI 명세서를
+     참고하시기 바랍니다.
 
  (*) readX_relaxed(), writeX_relaxed()
 
-     These are similar to readX() and writeX(), but provide weaker memory
-     ordering guarantees. Specifically, they do not guarantee ordering with
-     respect to normal memory accesses (e.g. DMA buffers) nor do they guarantee
-     ordering with respect to LOCK or UNLOCK operations. If the latter is
-     required, an mmiowb() barrier can be used. Note that relaxed accesses to
-     the same peripheral are guaranteed to be ordered with respect to each
-     other.
+     이것들은 readX() 와 writeX() 랑 비슷하지만, 더 약한 메모리 순서 보장을
+     제공합니다.  구체적으로, 이것들은 일반적 메모리 액세스 (예: DMA 버퍼) 에도
+     LOCK 이나 UNLOCK 오퍼레이션들에도 순서를 보장하지 않습니다.  순서가
+     필요하다면, mmiowb() 배리어가 사용될 수 있습니다.  같은 주변 장치에의
+     완화된 액세스는 각자에 대해서는 순서가 지켜짐을 알아 두시기 바랍니다.
 
  (*) ioreadX(), iowriteX()
 
-     These will perform appropriately for the type of access they're actually
-     doing, be it inX()/outX() or readX()/writeX().
+     이것들은 inX()/outX() 나 readX()/writeX() 처럼 실제로 하는 액세스의 타입에
+     적절하게 수행될 것입니다.
 
 
 ========================================
