@@ -76,7 +76,7 @@ Documentation/memory-barriers.txt
 
      - 캐시 일관성.
      - 캐시 일관성 vs DMA.
-     - Cache coherency vs MMIO.
+     - 캐시 일관성 vs MMIO.
 
  (*) The things CPUs get up to.
 
@@ -2730,19 +2730,18 @@ CPU 의 캐시에서 RAM 으로 쓰여지는 더티 캐시 라인에 의해 덮�
 참고하세요.
 
 
-CACHE COHERENCY VS MMIO
------------------------
+캐시 일관성 VS MMIO
+-------------------
 
-Memory mapped I/O usually takes place through memory locations that are part of
-a window in the CPU's memory space that has different properties assigned than
-the usual RAM directed window.
+Memory mapped I/O 는 일반적으로 CPU 의 메모리 공간 내의 한 윈도우의 부분에 있는
+메모리 지역에 이루어지는데, 이 윈도우는 일반적인, RAM 으로 향하는 윈도우와는
+다른 특성을 갖습니다.
 
-Amongst these properties is usually the fact that such accesses bypass the
-caching entirely and go directly to the device buses.  This means MMIO accesses
-may, in effect, overtake accesses to cached memory that were emitted earlier.
-A memory barrier isn't sufficient in such a case, but rather the cache must be
-flushed between the cached memory write and the MMIO access if the two are in
-any way dependent.
+그런 특성 가운데에는 일반적으로 그런 액세스는 캐시를 완전히 우회하고 디바이스
+버스로 곧바로 향한다는 것입니다.  이 말은 MMIO 액세스는 먼저 이루어진 캐시된
+메모리 액세스를 추월할 수 있다는 뜻입니다.  이런 경우엔 메모리 배리어만으로는
+충분치 않고, 만약 캐시된 메모리 쓰기 오퍼레이션과 MMIO 액세스가 어떤 방식으로든
+의존적이라면 해당 캐시는 두 오퍼레이션 사이에 비워져(flush)야만 합니다.
 
 
 =========================
