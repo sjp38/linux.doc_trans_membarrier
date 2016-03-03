@@ -78,7 +78,7 @@ Documentation/memory-barriers.txt
      - 캐시 일관성 vs DMA.
      - 캐시 일관성 vs MMIO.
 
- (*) The things CPUs get up to.
+ (*) CPU 들이 저지르는 일들.
 
      - And then there's the Alpha.
 
@@ -2744,13 +2744,12 @@ Memory mapped I/O 는 일반적으로 CPU 의 메모리 공간 내의 한 윈도
 의존적이라면 해당 캐시는 두 오퍼레이션 사이에 비워져(flush)야만 합니다.
 
 
-=========================
-THE THINGS CPUS GET UP TO
-=========================
+======================
+CPU 들이 저지르는 일들
+======================
 
-A programmer might take it for granted that the CPU will perform memory
-operations in exactly the order specified, so that if the CPU is, for example,
-given the following piece of code to execute:
+프로그래머는 CPU 가 메모리 오퍼레이션들을 정확히 요청한대로 수행해 줄 것이라고
+생각합니다, 따라서, 예를 들어 다음과 같은 코드를 실행하도록 CPU 에게 넘긴다면:
 
 	a = READ_ONCE(*A);
 	WRITE_ONCE(*B, b);
@@ -2758,50 +2757,49 @@ given the following piece of code to execute:
 	d = READ_ONCE(*D);
 	WRITE_ONCE(*E, e);
 
-they would then expect that the CPU will complete the memory operation for each
-instruction before moving on to the next one, leading to a definite sequence of
-operations as seen by external observers in the system:
+CPU 는 각각의 인스트럭션을 위한 메모리 오퍼레이션을 다음 인스트럭션을 처리하기
+전에 완료할 것이라 예상하고, 그로 인해 시스템 외부에서 관찰하기에 정해진 순서의
+오퍼레이션이 수행될 것으로 예상합니다:
 
 	LOAD *A, STORE *B, LOAD *C, LOAD *D, STORE *E.
 
 
-Reality is, of course, much messier.  With many CPUs and compilers, the above
-assumption doesn't hold because:
+당연하지만, 실제로는 훨씬 엉망입니다.  많은 CPU 들과 컴파일러들에서 앞의 가정은
+성립하지 못하는데 그 이유는 다음과 같습니다:
 
- (*) loads are more likely to need to be completed immediately to permit
-     execution progress, whereas stores can often be deferred without a
-     problem;
+ (*) 로드 오퍼레이션들은 실행을 계속 해나가기 위해 곧바로 완료될 필요가 있는
+     경우가 많은 반면, 스토어 오퍼레이션들은 종종 별다른 문제 없이 유예될 수
+     있습니다;
 
- (*) loads may be done speculatively, and the result discarded should it prove
-     to have been unnecessary;
+ (*) 로드 오퍼레이션들은 예측적으로 수행될 수도 있고, 필요없다고 증명된
+     결과들은 버려져야 합니다;
 
- (*) loads may be done speculatively, leading to the result having been fetched
-     at the wrong time in the expected sequence of events;
+ (*) 로드 오퍼레이션들은 예측적으로 수행될 수도 있으므로, 예상된 이벤트의
+     시퀀스와 다른 시간에 실제 결과가 얻어질 수도 있습니다;
 
- (*) the order of the memory accesses may be rearranged to promote better use
-     of the CPU buses and caches;
+ (*) 메모리 액세스 순서들은 CPU 버스와 캐시를 좀 더 잘 사용할 수 있도록 재배열
+     될수도 있습니다;
 
- (*) loads and stores may be combined to improve performance when talking to
-     memory or I/O hardware that can do batched accesses of adjacent locations,
-     thus cutting down on transaction setup costs (memory and PCI devices may
-     both be able to do this); and
+ (*) 로드와 스토어는 인접한 위치에의 액세스들을 일괄적으로 처리할 수 있는
+     메모리나 I/O 하드웨어 (메모리와 PCI 디바이스 둘 다 이게 가능할 수도
+     있습니다) 에 대해 요청되는 경우 개별 오퍼레이션을 위한 트랜잭션 설정
+     비용을 아끼기 위해 조합될 수도 있습니다; 그리고
 
- (*) the CPU's data cache may affect the ordering, and whilst cache-coherency
-     mechanisms may alleviate this - once the store has actually hit the cache
-     - there's no guarantee that the coherency management will be propagated in
-     order to other CPUs.
+ (*) 해당 CPU 의 데이터 캐시가 순서에 영향을 끼칠 수도 있고, 캐시 일관성
+     메커니즘이 - 스토어가 실제로 캐시에 도달한다면 - 이 문제를 완화시킬 수는
+     있지만 이 일관성 관리가 다른 CPU 들에도 같은 순서로 전달된다는 보장은
+     없습니다.
 
-So what another CPU, say, might actually observe from the above piece of code
-is:
+따라서 앞의 코드로부터 다른 CPU 가 볼수도 있는 결과는:
 
 	LOAD *A, ..., LOAD {*C,*D}, STORE *E, STORE *B
 
-	(Where "LOAD {*C,*D}" is a combined load)
+	("LOAD {*C,*D}" 는 조합된 로드입니다)
 
 
-However, it is guaranteed that a CPU will be self-consistent: it will see its
-_own_ accesses appear to be correctly ordered, without the need for a memory
-barrier.  For instance with the following code:
+하지만, CPU 는 스스로는 일관적일 것을 보장합니다: CPU 자기 _자신_ 의 액세스들은
+자신에게는 메모리 배리어의 없이도 정확히 순서 세워진 것으로 보여질 것입니다.
+예를 들어 다음의 코드가 주어졌다면:
 
 	U = READ_ONCE(*A);
 	WRITE_ONCE(*A, V);
@@ -2810,54 +2808,52 @@ barrier.  For instance with the following code:
 	WRITE_ONCE(*A, Y);
 	Z = READ_ONCE(*A);
 
-and assuming no intervention by an external influence, it can be assumed that
-the final result will appear to be:
+그리고 외부의 영향에 의한 간섭이 없다고 가정하면, 최종 결과는 다음과 같이
+나타날 것이라고 예상될 수 있습니다:
 
-	U == the original value of *A
+	U == *A 의 최초 값
 	X == W
 	Z == Y
 	*A == Y
 
-The code above may cause the CPU to generate the full sequence of memory
-accesses:
+앞의 코드는 CPU 가 다음의 메모리 액세스 시퀀스를 만들도록 할겁니다:
 
 	U=LOAD *A, STORE *A=V, STORE *A=W, X=LOAD *A, STORE *A=Y, Z=LOAD *A
 
-in that order, but, without intervention, the sequence may have almost any
-combination of elements combined or discarded, provided the program's view
-of the world remains consistent.  Note that READ_ONCE() and WRITE_ONCE()
-are -not- optional in the above example, as there are architectures
-where a given CPU might reorder successive loads to the same location.
-On such architectures, READ_ONCE() and WRITE_ONCE() do whatever is
-necessary to prevent this, for example, on Itanium the volatile casts
-used by READ_ONCE() and WRITE_ONCE() cause GCC to emit the special ld.acq
-and st.rel instructions (respectively) that prevent such reordering.
+하지만, 별다른 개입이 없다면, 이 시퀀스는 프로그램에 이 세상이 여전히
+일관적이라고만 보인다는 보장 하에, 어떤 조합으로든 만들어질 수도 있으며, 각
+액세스들은 합쳐지거나 버려질 수도 있습니다.  일부 아키텍쳐에서 CPU 는 같은
+위치에 대한 연속적인 로드 오퍼레이션들을 재배치 할 수도 있기 때문에 READ_ONCE()
+와 WRITE_ONCE() 는 이것을 막기 위해 뭐가 됐든 필요한 일을 하게 되는데, 예를
+들어, Itanium 에서는 READ_ONCE() 와 WRITE_ONCE() 를 이용한 volatile 캐스팅은
+GCC 가 각각 그런 재배치를 방지하는 특수 인스트럭션인 ld.acq 와 stl.rel
+인스트럭션을 각각 만들도록 합니다.
 
-The compiler may also combine, discard or defer elements of the sequence before
-the CPU even sees them.
+컴파일러 역시 시퀀스의 액세스들을 CPU 가 보기도 전에 합치거나 버리거나 뒤로
+미뤄버릴 수 있습니다.
 
-For instance:
+예를 들어:
 
 	*A = V;
 	*A = W;
 
-may be reduced to:
+는 다음과 같이 변형될 수 있습니다:
 
 	*A = W;
 
-since, without either a write barrier or an WRITE_ONCE(), it can be
-assumed that the effect of the storage of V to *A is lost.  Similarly:
+따라서, 쓰기 배리어나 WRITE_ONCE() 없이는, *A 로의 V 값의 저장의 효과는
+사라진다고 가정할 수 있습니다.  비슷하게:
 
 	*A = Y;
 	Z = *A;
 
-may, without a memory barrier or an READ_ONCE() and WRITE_ONCE(), be
-reduced to:
+는, 메모리 배리어나 READ_ONCE() 와 WRITE_ONCE() 없이는 다음과 같이 변형될 수
+있습니다:
 
 	*A = Y;
 	Z = Y;
 
-and the LOAD operation never appear outside of the CPU.
+그리고 이 LOAD 오퍼레이션은 CPU 바깥에는 아예 보이지 않습니다.
 
 
 AND THEN THERE'S THE ALPHA
