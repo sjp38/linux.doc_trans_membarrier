@@ -2951,6 +2951,7 @@ The Alpha defines the Linux kernel's memory barrier model.
 
 See the subsection on "Cache Coherency" above.
 
+
 VIRTUAL MACHINE GUESTS
 ----------------------
 
@@ -2968,6 +2969,7 @@ should use virt_mb() rather than smp_mb() when synchronizing against a
 These are equivalent to smp_mb() etc counterparts in all other respects,
 in particular, they do not control MMIO effects: to control
 MMIO effects, use mandatory barriers.
+
 
 ============
 EXAMPLE USES
