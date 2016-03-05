@@ -81,7 +81,7 @@ Documentation/memory-barriers.txt
  (*) CPU 들이 저지르는 일들.
 
      - 그리고 Alpha 가 있다.
-     - Virtual Machine Guests.
+     - 가상 머신 게스트.
 
  (*) Example uses.
 
@@ -2871,23 +2871,23 @@ Alpha 로 리눅스 커널의 메모리 배리어 모델을 정의할 수 있습
 
 위의 "캐시 일관성" 서브섹션을 참고하세요.
 
-VIRTUAL MACHINE GUESTS
--------------------
+가상 머신 게스트
+----------------
 
-Guests running within virtual machines might be affected by SMP effects even if
-the guest itself is compiled without SMP support.  This is an artifact of
-interfacing with an SMP host while running an UP kernel.  Using mandatory
-barriers for this use-case would be possible but is often suboptimal.
+가상 머신에서 동작하는 게스트들은 게스트 자체는 SMP 지원 없이 컴파일 되었다
+해도 SMP 영향을 받을 수 있습니다.  이건 UP 커널을 사용하면서 SMP 호스트와
+결부되어 발생하는 부작용입니다.  이 경우에는 필수 배리어를 사용해서 문제를
+해결할 수 있겠지만 그런 방법은 대부분의 경우 최적의 해결법은 아닙니다.
 
-To handle this case optimally, low-level virt_mb() etc macros are available.
-These have the same effect as smp_mb() etc when SMP is enabled, but generate
-identical code for SMP and non-SMP systems. For example, virtual machine guests
-should use virt_mb() rather than smp_mb() when synchronizing against a
-(possibly SMP) host.
+이 경우를 완벽하게 해결하기 위해, 로우 레벨의 virt_mb() 등의 매크로를 사용할 수
+있습니다. 이것들은 SMP 가 활성화 되어 있다면 smp_mb() 등과 동일한 효과를
+갖습니다만, SMP 와 SMP 아닌 시스템 모두에 대해 동일한 코드를 만들어냅니다.
+예를 들어, 가상 머신 게스트들은 (아마도 SMP 일) 호스트와 동기화를 할 때에는
+smp_mb() 가 아니라 virt_mb() 를 사용해야 합니다.
 
-These are equivalent to smp_mb() etc counterparts in all other respects,
-in particular, they do not control MMIO effects: to control
-MMIO effects, use mandatory barriers.
+이것들은 smp_mb() 류의 것들과 모든 부분에서 동일하며, 특히, MMIO 의 영향에
+대해서는 간여하지 않습니다: MMIO 의 영향을 제어하려면, 필수 배리어들을
+사용하시기 바랍니다.
 
 ============
 EXAMPLE USES
