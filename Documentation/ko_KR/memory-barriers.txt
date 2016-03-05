@@ -87,7 +87,7 @@ Documentation/memory-barriers.txt
 
      - 순환식 버퍼.
 
- (*) References.
+ (*) 참고 문헌.
 
 
 =======================
@@ -2904,9 +2904,9 @@ smp_mb() 가 아니라 virt_mb() 를 사용해야 합니다.
 	Documentation/circular-buffers.txt
 
 
-==========
-REFERENCES
-==========
+=========
+참고 문헌
+=========
 
 Alpha AXP Architecture Reference Manual, Second Edition (Sites & Witek,
 Digital Press)
