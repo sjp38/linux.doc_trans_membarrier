@@ -2951,7 +2951,7 @@ The Alpha defines the Linux kernel's memory barrier model.
 See the subsection on "Cache Coherency" above.
 
 VIRTUAL MACHINE GUESTS
--------------------
+----------------------
 
 Guests running within virtual machines might be affected by SMP effects even if
 the guest itself is compiled without SMP support.  This is an artifact of
