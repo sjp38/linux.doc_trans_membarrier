@@ -81,6 +81,7 @@ Documentation/memory-barriers.txt
  (*) CPU 들이 저지르는 일들.
 
      - 그리고 Alpha 가 있다.
+     - Virtual Machine Guests.
 
  (*) Example uses.
 
