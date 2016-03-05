@@ -83,9 +83,9 @@ Documentation/memory-barriers.txt
      - 그리고 Alpha 가 있다.
      - 가상 머신 게스트.
 
- (*) Example uses.
+ (*) 사용 예.
 
-     - Circular buffers.
+     - 순환식 버퍼.
 
  (*) References.
 
@@ -2891,19 +2891,17 @@ smp_mb() 가 아니라 virt_mb() 를 사용해야 합니다.
 사용하시기 바랍니다.
 
 
-============
-EXAMPLE USES
-============
+=======
+사용 예
+=======
 
-CIRCULAR BUFFERS
-----------------
+순환식 버퍼
+-----------
 
-Memory barriers can be used to implement circular buffering without the need
-of a lock to serialise the producer with the consumer.  See:
+메모리 배리어들은 순환식 버퍼를 생성자와 소비자 사이의 동기화에 락을 사용하지
+않고 구현하는데 사용될 수 있습니다.  더 자세한 내용을 위해선 다음을 참고하세요:
 
 	Documentation/circular-buffers.txt
-
-for details.
 
 
 ==========
