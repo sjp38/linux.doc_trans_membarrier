@@ -2962,7 +2962,7 @@ barriers for this use-case would be possible but is often suboptimal.
 
 To handle this case optimally, low-level virt_mb() etc macros are available.
 These have the same effect as smp_mb() etc when SMP is enabled, but generate
-identical code for SMP and non-SMP systems. For example, virtual machine guests
+identical code for SMP and non-SMP systems.  For example, virtual machine guests
 should use virt_mb() rather than smp_mb() when synchronizing against a
 (possibly SMP) host.
 
