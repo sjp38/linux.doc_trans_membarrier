@@ -570,20 +570,6 @@ CPU 와/또는 디바이스들 간의 상호작용을 제정신으로 다룰 수
 (&B) 을, 그리고 변수 B 는 옛날 값 (2) 을 가지고 있는 걸 볼수도 있습니다.
 
 
-데이터 의존성 배리어가 필요할 수 있는 또다른 예는 숫자가 메모리에서 읽혀져서는
-배열 접근을 위한 인덱스의 계산에 사용되는 경우입니다:
-
-	CPU 1		      CPU 2
-	===============	      ===============
-	{ M[0] == 1, M[1] == 2, M[3] == 3, P == 0, Q == 3 }
-	M[1] = 4;
-	<write barrier>
-	WRITE_ONCE(P, 1);
-			      Q = READ_ONCE(P);
-			      <data dependency barrier>
-			      D = M[Q];
-
-
 데이터 의존성 배리어는 한 예로, RCU 시스템에서 매우 중요합니다.
 include/linux/rcupdate.h 의 rcu_assign_pointer() 와 rcu_dereference() 를
 참고하세요.  이건 RCU 된 포인터의 현재 타겟이 새로 수정된 타겟으로 바꾸는
