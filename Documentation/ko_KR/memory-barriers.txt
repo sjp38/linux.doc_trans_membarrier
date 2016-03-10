@@ -526,7 +526,7 @@ CPU 와/또는 디바이스들 간의 상호작용을 제정신으로 다룰 수
 	===============	      ===============
 	{ A == 1, B == 2, C == 3, P == &A, Q == &C }
 	B = 4;
-	<write barrier>
+	<쓰기 배리어>
 	WRITE_ONCE(P, &B)
 			      Q = READ_ONCE(P);
 			      D = *Q;
@@ -553,10 +553,10 @@ CPU 와/또는 디바이스들 간의 상호작용을 제정신으로 다룰 수
 	===============	      ===============
 	{ A == 1, B == 2, C == 3, P == &A, Q == &C }
 	B = 4;
-	<write barrier>
+	<쓰기 배리어>
 	WRITE_ONCE(P, &B);
 			      Q = READ_ONCE(P);
-			      <data dependency barrier>
+			      <데이터 의존성 배리어>
 			      D = *Q;
 
 이것이 앞의 가정된 경우 두가지 중 하나만이 발생하고, 세번째 경우는 발생할 수
@@ -568,10 +568,10 @@ CPU 와/또는 디바이스들 간의 상호작용을 제정신으로 다룰 수
 	===============	      ===============
 	{ A == 1, B == 2, C = 3, P == &A, Q == &C }
 	B = 4;
-	<write barrier>
+	<쓰기 배리어>
 	WRITE_ONCE(P, &B);
 			      Q = READ_ONCE(P);
-			      <data dependency barrier>
+			      <데이터 의존성 배리어>
 			      *Q = 5;
 
 이 데이터 의존성 배리어는 Q 로의 읽기가 *Q 로의 스토어와 순서를 맞추게
@@ -611,7 +611,7 @@ include/linux/rcupdate.h 의 rcu_assign_pointer() 와 rcu_dereference() 를
 
 	q = READ_ONCE(a);
 	if (q) {
-		<data dependency barrier>  /* BUG: No data dependency!!! */
+		<데이터 의존성 배리어>  /* BUG: No data dependency!!! */
 		p = READ_ONCE(b);
 	}
 
@@ -623,7 +623,7 @@ include/linux/rcupdate.h 의 rcu_assign_pointer() 와 rcu_dereference() 를
 
 	q = READ_ONCE(a);
 	if (q) {
-		<read barrier>
+		<읽기 배리어>
 		p = READ_ONCE(b);
 	}
 
@@ -845,9 +845,9 @@ RELEASE 배리어, 또는 범용 배리어와 짝을 맞춥니다:
 	CPU 1		      CPU 2
 	===============	      ===============
 	WRITE_ONCE(a, 1);
-	<write barrier>
+	<쓰기 배리어>
 	WRITE_ONCE(b, 2);     x = READ_ONCE(b);
-			      <read barrier>
+			      <읽기 배리어>
 			      y = READ_ONCE(a);
 
 또는:
@@ -855,9 +855,9 @@ RELEASE 배리어, 또는 범용 배리어와 짝을 맞춥니다:
 	CPU 1		      CPU 2
 	===============	      ===============================
 	a = 1;
-	<write barrier>
+	<쓰기 배리어>
 	WRITE_ONCE(b, &a);    x = READ_ONCE(b);
-			      <data dependency barrier>
+			      <데이터 의존성 배리어>
 			      y = *x;
 
 또는:
@@ -865,7 +865,7 @@ RELEASE 배리어, 또는 범용 배리어와 짝을 맞춥니다:
 	CPU 1		      CPU 2
 	===============	      ===============================
 	r1 = READ_ONCE(y);
-	<general barrier>
+	<범용 배리어>
 	WRITE_ONCE(y, 1);     if (r2 = READ_ONCE(x)) {
 			         <implicit control dependency>
 			         WRITE_ONCE(y, 1);
@@ -882,7 +882,7 @@ RELEASE 배리어, 또는 범용 배리어와 짝을 맞춥니다:
 	===================                 ===================
 	WRITE_ONCE(a, 1);    }----   --->{  v = READ_ONCE(c);
 	WRITE_ONCE(b, 2);    }    \ /    {  w = READ_ONCE(d);
-	<write barrier>            \        <read barrier>
+	<쓰기 배리어>              \        <읽기 배리어>
 	WRITE_ONCE(c, 3);    }    / \    {  x = READ_ONCE(a);
 	WRITE_ONCE(d, 4);    }----   --->{  y = READ_ONCE(b);
 
@@ -898,7 +898,7 @@ RELEASE 배리어, 또는 범용 배리어와 짝을 맞춥니다:
 	STORE A = 1
 	STORE B = 2
 	STORE C = 3
-	<write barrier>
+	<쓰기 배리어>
 	STORE D = 4
 	STORE E = 5
 
@@ -936,7 +936,7 @@ RELEASE 배리어, 또는 범용 배리어와 짝을 맞춥니다:
 		{ B = 7; X = 9; Y = 8; C = &Y }
 	STORE A = 1
 	STORE B = 2
-	<write barrier>
+	<쓰기 배리어>
 	STORE C = &B		LOAD X
 	STORE D = 4		LOAD C (gets &B)
 				LOAD *C (reads B)
@@ -981,10 +981,10 @@ B 가 7 이라는 결과를 얻습니다.
 		{ B = 7; X = 9; Y = 8; C = &Y }
 	STORE A = 1
 	STORE B = 2
-	<write barrier>
+	<쓰기 배리어>
 	STORE C = &B		LOAD X
 	STORE D = 4		LOAD C (gets &B)
-				<data dependency barrier>
+				<데이터 의존성 배리어>
 				LOAD *C (reads B)
 
 다음과 같이 됩니다:
@@ -1021,7 +1021,7 @@ B 가 7 이라는 결과를 얻습니다.
 	=======================	=======================
 		{ A = 0, B = 9 }
 	STORE A=1
-	<write barrier>
+	<쓰기 배리어>
 	STORE B=2
 				LOAD B
 				LOAD A
@@ -1056,10 +1056,10 @@ CPU 1 은 쓰기 배리어를 쳤지만, 별다른 개입이 없다면 CPU 2 는
 	=======================	=======================
 		{ A = 0, B = 9 }
 	STORE A=1
-	<write barrier>
+	<쓰기 배리어>
 	STORE B=2
 				LOAD B
-				<read barrier>
+				<읽기 배리어>
 				LOAD A
 
 CPU 1 에 의해 만들어진 부분적 순서가 CPU 2 에도 그대로 인지됩니다:
@@ -1091,11 +1091,11 @@ CPU 1 에 의해 만들어진 부분적 순서가 CPU 2 에도 그대로 인지�
 	=======================	=======================
 		{ A = 0, B = 9 }
 	STORE A=1
-	<write barrier>
+	<쓰기 배리어>
 	STORE B=2
 				LOAD B
 				LOAD A [first load of A]
-				<read barrier>
+				<읽기 배리어>
 				LOAD A [second load of A]
 
 A 의 로드 두개가 모두 B 의 로드 이후에 있지만, 서로 다른 값을 얻어올 수
@@ -1202,7 +1202,7 @@ A 의 로드 두개가 모두 B 의 로드 이후에 있지만, 서로 다른 �
 				LOAD B
 				DIVIDE
 				DIVIDE
-				<read barrier>
+				<읽기 배리어>
 				LOAD A
 
 예측으로 얻어지는 값은 사용된 배리어의 타입에 따라서 해당 값이 옳은지
@@ -2001,7 +2001,7 @@ set_current_state() 에 의해, 태스크 상태가 바뀐 후 범용 메모리 
 	set_current_state();
 	  smp_store_mb();
 	    STORE current->state
-	    <general barrier>
+	    <범용 배리어>
 	LOAD event_indicated
 
 set_current_state() 는 다음의 것들로 감싸질 수도 있습니다:
@@ -2042,8 +2042,8 @@ wake_up() 류에 의해 쓰기 메모리 배리어가 내포됩니다.  만약 �
 	===============================	===============================
 	set_current_state();		STORE event_indicated
 	  smp_store_mb();		wake_up();
-	    STORE current->state	  <write barrier>
-	    <general barrier>		  STORE current->state
+	    STORE current->state	  <쓰기 배리어>
+	    <범용 배리어>		  STORE current->state
 	LOAD event_indicated
 
 한번더 말합니다만, 이 쓰기 메모리 배리어는 만약 그것들이 정말로 뭔가를
