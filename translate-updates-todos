@@ -1,0 +1,10 @@
+This file contains TODOs for translation update.  Because even the changes
+included in next tree can be rejected to linus tree, we track the updates here
+to not forget to apply them.
+
+memory-barriers.txt
+-------------------
+
+4530d62,David Howells,:documentation: State purpose of memory-barriers.txt
+0945295,Peter Zijlstra,:documentation: Add disclaimer
+787df63,Davidlohr Bueso,:locking/Documentation: Mention smp_cond_acquire()
