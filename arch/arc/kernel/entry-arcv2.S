@@ -45,11 +45,12 @@ VECTOR	reserved		; Reserved slots
 VECTOR	handle_interrupt	; (16) Timer0
 VECTOR	handle_interrupt	; unused (Timer1)
 VECTOR	handle_interrupt	; unused (WDT)
-VECTOR	handle_interrupt	; (19) ICI (inter core interrupt)
-VECTOR	handle_interrupt
-VECTOR	handle_interrupt
-VECTOR	handle_interrupt
-VECTOR	handle_interrupt	; (23) End of fixed IRQs
+VECTOR	handle_interrupt	; (19) Inter core Interrupt (IPI)
+VECTOR	handle_interrupt	; (20) perf Interrupt
+VECTOR	handle_interrupt	; (21) Software Triggered Intr (Self IPI)
+VECTOR	handle_interrupt	; unused
+VECTOR	handle_interrupt	; (23) unused
+# End of fixed IRQs
 
 .rept CONFIG_ARC_NUMBER_OF_INTERRUPTS - 8
 	VECTOR	handle_interrupt
@@ -68,8 +69,11 @@ ENTRY(handle_interrupt)
 
 	clri		; To make status32.IE agree with CPU internal state
 
-	lr  r0, [ICAUSE]
+#ifdef CONFIG_TRACE_IRQFLAGS
+	TRACE_ASM_IRQ_DISABLE
+#endif
 
+	lr  r0, [ICAUSE]
 	mov   blink, ret_from_exception
 
 	b.d  arch_do_IRQ
@@ -167,6 +171,11 @@ END(EV_TLBProtV)
 ; All 2 entry points to here already disable interrupts
 
 .Lrestore_regs:
+
+	# Interrpts are actually disabled from this point on, but will get
+	# reenabled after we return from interrupt/exception.
+	# But irq tracer needs to be told now...
+	TRACE_ASM_IRQ_ENABLE
 
 	ld	r0, [sp, PT_status32]	; U/K mode at time of entry
 	lr	r10, [AUX_IRQ_ACT]

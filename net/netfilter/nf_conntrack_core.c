@@ -66,7 +66,7 @@ EXPORT_SYMBOL_GPL(nf_conntrack_locks);
 __cacheline_aligned_in_smp DEFINE_SPINLOCK(nf_conntrack_expect_lock);
 EXPORT_SYMBOL_GPL(nf_conntrack_expect_lock);
 
-static __read_mostly spinlock_t nf_conntrack_locks_all_lock;
+static __read_mostly DEFINE_SPINLOCK(nf_conntrack_locks_all_lock);
 static __read_mostly bool nf_conntrack_locks_all;
 
 void nf_conntrack_lock(spinlock_t *lock) __acquires(lock)
@@ -74,8 +74,7 @@ void nf_conntrack_lock(spinlock_t *lock) __acquires(lock)
 	spin_lock(lock);
 	while (unlikely(nf_conntrack_locks_all)) {
 		spin_unlock(lock);
-		spin_lock(&nf_conntrack_locks_all_lock);
-		spin_unlock(&nf_conntrack_locks_all_lock);
+		spin_unlock_wait(&nf_conntrack_locks_all_lock);
 		spin_lock(lock);
 	}
 }
@@ -121,8 +120,7 @@ static void nf_conntrack_all_lock(void)
 	nf_conntrack_locks_all = true;
 
 	for (i = 0; i < CONNTRACK_LOCKS; i++) {
-		spin_lock(&nf_conntrack_locks[i]);
-		spin_unlock(&nf_conntrack_locks[i]);
+		spin_unlock_wait(&nf_conntrack_locks[i]);
 	}
 }
 
@@ -1412,6 +1410,7 @@ get_next_corpse(struct net *net, int (*iter)(struct nf_conn *i, void *data),
 		}
 		spin_unlock(lockp);
 		local_bh_enable();
+		cond_resched();
 	}
 
 	for_each_possible_cpu(cpu) {
@@ -1424,6 +1423,7 @@ get_next_corpse(struct net *net, int (*iter)(struct nf_conn *i, void *data),
 				set_bit(IPS_DYING_BIT, &ct->status);
 		}
 		spin_unlock_bh(&pcpu->lock);
+		cond_resched();
 	}
 	return NULL;
 found:
@@ -1440,6 +1440,8 @@ void nf_ct_iterate_cleanup(struct net *net,
 	struct nf_conn *ct;
 	unsigned int bucket = 0;
 
+	might_sleep();
+
 	while ((ct = get_next_corpse(net, iter, data, &bucket)) != NULL) {
 		/* Time to push up daises... */
 		if (del_timer(&ct->timeout))
@@ -1448,6 +1450,7 @@ void nf_ct_iterate_cleanup(struct net *net,
 		/* ... else the timer will get him soon. */
 
 		nf_ct_put(ct);
+		cond_resched();
 	}
 }
 EXPORT_SYMBOL_GPL(nf_ct_iterate_cleanup);
@@ -1775,6 +1778,7 @@ void nf_conntrack_init_end(void)
 
 int nf_conntrack_init_net(struct net *net)
 {
+	static atomic64_t unique_id;
 	int ret = -ENOMEM;
 	int cpu;
 
@@ -1797,7 +1801,8 @@ int nf_conntrack_init_net(struct net *net)
 	if (!net->ct.stat)
 		goto err_pcpu_lists;
 
-	net->ct.slabname = kasprintf(GFP_KERNEL, "nf_conntrack_%p", net);
+	net->ct.slabname = kasprintf(GFP_KERNEL, "nf_conntrack_%llu",
+				(u64)atomic64_inc_return(&unique_id));
 	if (!net->ct.slabname)
 		goto err_slabname;
 
