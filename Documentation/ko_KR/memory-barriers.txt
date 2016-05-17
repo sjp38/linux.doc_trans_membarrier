@@ -24,8 +24,25 @@ Documentation/memory-barriers.txt
 
 저자: David Howells <dhowells@redhat.com>
       Paul E. McKenney <paulmck@linux.vnet.ibm.com>
+      Will Deacon <will.deacon@arm.com>
+      Peter Zijlstra <peterz@infradead.org>
 
+========
+면책조항
+========
+
+이 문서는 명세서가 아닙니다; 이 문서는 (빠르게 읽히기 위해) 의도적으로든
+(사람에 의해 쓰였다보니) 의도적이지 않게든 완벽하지 않습니다.  이 문서는
+리눅스에서 제공하는 다양한 메모리 배리어들을 사용하기 위한 안내서입니다만 뭔가
+의문이 든다면 (그런게 많을 겁니다) 물어봐 주시기 바랍니다.
+
+다시 말하지만, 이 문서는 리눅스가 하드웨어에 기대하는 사항에 대한 명세서가
+아닙니다.
+
+
+=====
 목차:
+=====
 
  (*) 추상 메모리 액세스 모델.
 
