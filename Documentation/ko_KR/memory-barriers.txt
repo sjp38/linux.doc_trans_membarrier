@@ -83,7 +83,7 @@ Documentation/memory-barriers.txt
 
  (*) 암묵적 커널 메모리 배리어.
 
-     - Acquiring 함수.
+     - 락 Acquisition 함수.
      - 인터럽트 비활성화 함수.
      - 슬립과 웨이크업 함수.
      - 그외의 함수들.
@@ -1865,8 +1865,8 @@ MMIO 쓰기 배리어
 구현됩니다.
 
 
-ACQUIRING 함수
---------------
+락 ACQUISITION 함수
+-------------------
 
 리눅스 커널은 다양한 락 구성체를 가지고 있습니다:
 
