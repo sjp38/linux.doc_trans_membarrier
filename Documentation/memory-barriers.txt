@@ -1491,7 +1491,7 @@ of optimizations:
 	a[1] = x;
 
      Might result in an older value of x stored in a[1] than in a[0].
-     Prevent both the compiler and the CPU from doing this as follows:
+     Prevent the compiler from doing this as follows:
 
 	a[0] = READ_ONCE(x);
 	a[1] = READ_ONCE(x);
