@@ -7,7 +7,8 @@ a problem with the translation, please contact the maintainer of this file.
 Please also note that the purpose of this file is to be easier to
 read for non English (read: Korean) speakers and is not intended as
 a fork.  So if you have any comments or updates for this file please
-try to update the original English file first.
+update the original English file first.  The English version is
+definitive, and readers should look there if they have any doubt.
 
 ===================================
 이 문서는
