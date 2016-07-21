@@ -43,6 +43,7 @@ static struct {
 
 static DEFINE_RAW_SPINLOCK(timekeeper_lock);
 static struct timekeeper shadow_timekeeper;
+static int timekeeping_active;
 
 /**
  * struct tk_fast - NMI safe timekeeper
@@ -419,6 +420,16 @@ u64 ktime_get_raw_fast_ns(void)
 }
 EXPORT_SYMBOL_GPL(ktime_get_raw_fast_ns);
 
+u64 ktime_get_log_ts(u64 *offset_real)
+{
+	*offset_real = ktime_to_ns(tk_core.timekeeper.offs_real);
+
+	if (timekeeping_active)
+		return ktime_get_mono_fast_ns();
+	else
+		return local_clock();
+}
+
 /* Suspend-time cycles value for halted fast timekeeper. */
 static cycle_t cycles_at_suspend;
 
@@ -480,10 +491,12 @@ static inline void old_vsyscall_fixup(struct timekeeper *tk)
 	* users are removed, this can be killed.
 	*/
 	remainder = tk->tkr_mono.xtime_nsec & ((1ULL << tk->tkr_mono.shift) - 1);
-	tk->tkr_mono.xtime_nsec -= remainder;
-	tk->tkr_mono.xtime_nsec += 1ULL << tk->tkr_mono.shift;
-	tk->ntp_error += remainder << tk->ntp_error_shift;
-	tk->ntp_error -= (1ULL << tk->tkr_mono.shift) << tk->ntp_error_shift;
+	if (remainder != 0) {
+		tk->tkr_mono.xtime_nsec -= remainder;
+		tk->tkr_mono.xtime_nsec += 1ULL << tk->tkr_mono.shift;
+		tk->ntp_error += remainder << tk->ntp_error_shift;
+		tk->ntp_error -= (1ULL << tk->tkr_mono.shift) << tk->ntp_error_shift;
+	}
 }
 #else
 #define old_vsyscall_fixup(tk)
@@ -1503,6 +1516,8 @@ void __init timekeeping_init(void)
 
 	write_seqcount_end(&tk_core.seq);
 	raw_spin_unlock_irqrestore(&timekeeper_lock, flags);
+
+	timekeeping_active = 1;
 }
 
 /* time in seconds when suspend began for persistent clock */
@@ -2186,6 +2201,7 @@ struct timespec64 get_monotonic_coarse64(void)
 
 	return now;
 }
+EXPORT_SYMBOL(get_monotonic_coarse64);
 
 /*
  * Must hold jiffies_lock

@@ -302,7 +302,7 @@ static int init_dpm_2_parameters(
 			(((unsigned long)powerplay_table) + le16_to_cpu(powerplay_table->usPPMTableOffset));
 
 		if (0 != powerplay_table->usPPMTableOffset) {
-			if (1 == get_platform_power_management_table(hwmgr, atom_ppm_table)) {
+			if (get_platform_power_management_table(hwmgr, atom_ppm_table) == 0) {
 				phm_cap_set(hwmgr->platform_descriptor.platformCaps,
 					PHM_PlatformCaps_EnablePlatformPowerManagement);
 			}
@@ -1076,9 +1076,6 @@ int tonga_pp_tables_uninitialize(struct pp_hwmgr *hwmgr)
 	int result = 0;
 	struct phm_ppt_v1_information *pp_table_information =
 		(struct phm_ppt_v1_information *)(hwmgr->pptable);
-
-	if (NULL != hwmgr->soft_pp_table)
-		hwmgr->soft_pp_table = NULL;
 
 	kfree(pp_table_information->vdd_dep_on_sclk);
 	pp_table_information->vdd_dep_on_sclk = NULL;

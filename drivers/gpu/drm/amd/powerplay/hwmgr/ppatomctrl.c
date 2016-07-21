@@ -552,13 +552,13 @@ static bool atomctrl_lookup_gpio_pin(
 				pin_assignment->ucGpioPinBitShift;
 			gpio_pin_assignment->us_gpio_pin_aindex =
 				le16_to_cpu(pin_assignment->usGpioPin_AIndex);
-			return false;
+			return true;
 		}
 
 		offset += offsetof(ATOM_GPIO_PIN_ASSIGNMENT, ucGPIO_ID) + 1;
 	}
 
-	return true;
+	return false;
 }
 
 /**
@@ -1256,7 +1256,7 @@ int atomctrl_set_ac_timing_ai(struct pp_hwmgr *hwmgr, uint32_t memory_clock,
 }
 
 int atomctrl_get_voltage_evv_on_sclk_ai(struct pp_hwmgr *hwmgr, uint8_t voltage_type,
-				uint32_t sclk, uint16_t virtual_voltage_Id, uint16_t *voltage)
+				uint32_t sclk, uint16_t virtual_voltage_Id, uint32_t *voltage)
 {
 
 	int result;
@@ -1274,7 +1274,7 @@ int atomctrl_get_voltage_evv_on_sclk_ai(struct pp_hwmgr *hwmgr, uint8_t voltage_
 	if (0 != result)
 		return result;
 
-	*voltage = get_voltage_info_param_space.usVoltageLevel;
+	*voltage = ((GET_EVV_VOLTAGE_INFO_OUTPUT_PARAMETER_V1_3 *)(&get_voltage_info_param_space))->ulVoltageLevel;
 
 	return result;
 }
